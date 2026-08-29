@@ -1,11 +1,10 @@
-const { Events, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
 const crypto = require('crypto');
 const db = require('../database');
 
 module.exports = {
-    name: Events.InteractionCreate,
+    name: 'interactionCreate',
     async execute(interaction, client) {
-        // 1. Slash Command
+        // 1. Xử lý Slash Commands
         if (interaction.isChatInputCommand()) {
             const command = client.commands.get(interaction.commandName);
             if (!command) return;
@@ -13,127 +12,87 @@ module.exports = {
             try {
                 await command.execute(interaction);
             } catch (error) {
-                console.error(`❌ Lỗi lệnh /${interaction.commandName}:`, error);
-                const reply = { content: '❌ Có lỗi xảy ra khi thực thi lệnh!', ephemeral: true };
+                console.error('Lỗi thực thi lệnh:', error);
                 if (interaction.replied || interaction.deferred) {
-                    await interaction.followUp(reply);
+                    await interaction.followUp({ content: '❌ Có lỗi xảy ra khi thực thi lệnh!', ephemeral: true });
                 } else {
-                    await interaction.reply(reply);
+                    await interaction.reply({ content: '❌ Có lỗi xảy ra khi thực thi lệnh!', ephemeral: true });
                 }
             }
         }
 
-        // 2. Mở Modal Nhập Key
-        if (interaction.isButton() && interaction.customId === 'btn_open_redeem_modal') {
-            const modal = new ModalBuilder()
-                .setCustomId('modal_redeem_key')
-                .setTitle('Nhập Mã Key Nhận Coin');
+        // 2. Xử lý dữ liệu gửi từ Modal Admin
+        if (interaction.isModalSubmit()) {
+            // A. Cấu hình kinh tế
+            if (interaction.customId === 'modal_config_system') {
+                const reward = interaction.fields.getTextInputValue('cfg_reward');
+                const limit = interaction.fields.getTextInputValue('cfg_limit');
+                const fee = interaction.fields.getTextInputValue('cfg_fee');
 
-            const keyInput = new TextInputBuilder()
-                .setCustomId('input_key_code')
-                .setLabel('Mã Key của bạn từ Web')
-                .setPlaceholder('Ví dụ: KEY-8F92-XA10-1234')
-                .setStyle(TextInputStyle.Short)
-                .setMinLength(5)
-                .setMaxLength(64)
-                .setRequired(true);
+                await db.batch([
+                    { sql: "INSERT OR REPLACE INTO system_settings (setting_key, setting_value) VALUES ('task_reward_coins', ?)", args: [reward] },
+                    { sql: "INSERT OR REPLACE INTO system_settings (setting_key, setting_value) VALUES ('daily_task_limit', ?)", args: [limit] },
+                    { sql: "INSERT OR REPLACE INTO system_settings (setting_key, setting_value) VALUES ('trade_fee_percent', ?)", args: [fee] }
+                ], 'write');
 
-            const row = new ActionRowBuilder().addComponents(keyInput);
-            modal.addComponents(row);
-
-            return await interaction.showModal(modal);
-        }
-
-        // 3. Xử lý Submit Key từ Modal
-        if (interaction.isModalSubmit() && interaction.customId === 'modal_redeem_key') {
-            const userId = interaction.user.id;
-            const keyCode = interaction.fields.getTextInputValue('input_key_code').trim().toUpperCase();
-
-            const user = db.prepare('SELECT * FROM global_users WHERE discord_id = ?').get(userId);
-            if (!user) {
-                return interaction.reply({ content: '⚠️ Bạn chưa liên kết tài khoản! Hãy dùng `/link` trước.', ephemeral: true });
-            }
-
-            const keyData = db.prepare('SELECT * FROM claim_keys WHERE key_code = ?').get(keyCode);
-            if (!keyData) {
-                return interaction.reply({ content: '❌ Mã Key không tồn tại hoặc bị nhập sai!', ephemeral: true });
-            }
-            if (keyData.is_used === 1) {
-                return interaction.reply({ content: '⚠️ Mã Key này đã được sử dụng trước đó rồi!', ephemeral: true });
-            }
-            if (keyData.discord_id !== userId) {
-                return interaction.reply({ content: '🛑 Mã Key này không thuộc về tài khoản Discord của bạn!', ephemeral: true });
-            }
-
-            // Ghi nhận nhà mạng đã vượt
-            const completed = (user.completed_providers || '').split(',').filter(Boolean);
-            if (keyData.provider && !completed.includes(keyData.provider)) {
-                completed.push(keyData.provider);
-            }
-
-            const redeemTx = db.transaction(() => {
-                db.prepare('UPDATE claim_keys SET is_used = 1 WHERE key_code = ?').run(keyCode);
-                db.prepare(`
-                    UPDATE global_users 
-                    SET coin_balance = coin_balance + ?, 
-                        daily_task_count = daily_task_count + 1,
-                        completed_providers = ?
-                    WHERE discord_id = ?
-                `).run(keyData.reward_coins, completed.join(','), userId);
-            });
-            redeemTx();
-
-            const newBalance = user.coin_balance + keyData.reward_coins;
-
-            const embed = new EmbedBuilder()
-                .setTitle('🎉 Quy Đổi Mã Key Thành Công!')
-                .setColor('#10B981')
-                .setDescription(`Bạn đã nhận thành công **+${keyData.reward_coins} Coin** vào tài khoản!`)
-                .addFields(
-                    { name: '🔑 Mã Key Đã Dùng', value: `\`${keyCode}\``, inline: true },
-                    { name: '🌐 Cổng Link', value: `\`${keyData.provider || 'Thường'}\``, inline: true },
-                    { name: '💰 Số Dư Mới', value: `**${newBalance.toLocaleString()}** Coin`, inline: true },
-                    { name: '🎯 Tiến Độ Hôm Nay', value: `\`${user.daily_task_count + 1}/3\` lượt`, inline: true }
-                )
-                .setFooter({ text: 'Giao dịch đổi thưởng hoàn tất 100%' });
-
-            return interaction.reply({ embeds: [embed], ephemeral: true });
-        }
-
-        // 4. Menu Mua Hàng /shop
-        if (interaction.isStringSelectMenu() && interaction.customId === 'select_shop_item') {
-            const selected = interaction.values[0];
-            const userId = interaction.user.id;
-            const user = db.prepare('SELECT * FROM global_users WHERE discord_id = ?').get(userId);
-
-            let price = 0;
-            let itemName = '';
-            if (selected === 'key_1day_100') { price = 100; itemName = 'Key VIP Tool (1 Ngày)'; }
-            if (selected === 'key_7days_500') { price = 500; itemName = 'Key VIP Tool (7 Ngày)'; }
-            if (selected === 'key_30days_1500') { price = 1500; itemName = 'Key VIP Tool (30 Ngày)'; }
-
-            if (user.coin_balance < price) {
                 return interaction.reply({
-                    content: `❌ Số dư không đủ! Cần **${price.toLocaleString()} Coin**, bạn chỉ có **${user.coin_balance.toLocaleString()} Coin**.`,
+                    content: `✅ **Đã cập nhật cài đặt thành công:**\n• Thưởng vượt link: **+${reward} Coin**\n• Giới hạn vượt: **${limit} lần/ngày**\n• Phí chuyển tiền: **${fee}%**`,
                     ephemeral: true
                 });
             }
 
-            const generatedKey = `VIP-${crypto.randomBytes(3).toString('hex').toUpperCase()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+            // B. Tạo mã Key nhận thưởng
+            if (interaction.customId === 'modal_create_key') {
+                const coins = parseInt(interaction.fields.getTextInputValue('key_coins')) || 50;
+                const keyCode = 'KEY-GIFT-' + crypto.randomBytes(4).toString('hex').toUpperCase();
 
-            const buyTx = db.transaction(() => {
-                db.prepare('UPDATE global_users SET coin_balance = coin_balance - ? WHERE discord_id = ?').run(price, userId);
-                db.prepare('INSERT INTO user_inventory (discord_id, item_id, item_name, item_data) VALUES (?, ?, ?, ?)').run(userId, selected, itemName, generatedKey);
-            });
-            buyTx();
+                await db.execute({
+                    sql: "INSERT INTO claim_keys (key_code, discord_id, reward_coins, provider) VALUES (?, 'GLOBAL', ?, 'Admin_Gift')",
+                    args: [keyCode, coins]
+                });
 
-            const embed = new EmbedBuilder()
-                .setTitle('🎉 Giao Dịch Mua Hàng Thành Công!')
-                .setColor('#10B981')
-                .setDescription(`Bạn đã mua thành công **${itemName}**.\n\n🔑 **Mã Key Của Bạn:**\n\`${generatedKey}\`\n\n*(Mã Key đã được lưu trữ an toàn trong lệnh \`/inventory\`)*`)
-                .setFooter({ text: 'Cảm ơn bạn đã ủng hộ hệ thống!' });
+                return interaction.reply({
+                    content: `🎉 **Đã tạo mã Key nhận thưởng:**\n\n• Mã Key: \`${keyCode}\`\n• Trị giá: **+${coins} Coin**\n• Thành viên có thể dùng lệnh \`/redeem\` để nhận thưởng.`,
+                    ephemeral: true
+                });
+            }
 
-            return interaction.reply({ embeds: [embed], ephemeral: true });
+            // C. Thêm vật phẩm vào Shop
+            if (interaction.customId === 'modal_add_shop_item') {
+                const id = interaction.fields.getTextInputValue('item_id').trim();
+                const name = interaction.fields.getTextInputValue('item_name').trim();
+                const price = parseInt(interaction.fields.getTextInputValue('item_price')) || 100;
+                const type = interaction.fields.getTextInputValue('item_reward_type').trim().toUpperCase();
+                const data = interaction.fields.getTextInputValue('item_reward_data') || '';
+
+                await db.execute({
+                    sql: `INSERT OR REPLACE INTO shop_items (item_id, item_name, price, reward_type, reward_data) VALUES (?, ?, ?, ?, ?)`,
+                    args: [id, name, price, type, data]
+                });
+
+                return interaction.reply({
+                    content: `🛒 **Đã lưu mặt hàng vào Shop thành công!**\n• **Tên:** ${name}\n• **Giá:** ${price} Coin\n• **Phân loại:** \`${type}\``,
+                    ephemeral: true
+                });
+            }
+
+            // D. Cấp đặc quyền VIP
+            if (interaction.customId === 'modal_grant_perk') {
+                const targetId = interaction.fields.getTextInputValue('perk_target').trim();
+                const perkType = interaction.fields.getTextInputValue('perk_type').trim().toUpperCase();
+                const days = parseInt(interaction.fields.getTextInputValue('perk_days')) || 7;
+                const expiresAt = Math.floor(Date.now() / 1000) + (days * 86400);
+
+                await db.execute({
+                    sql: "INSERT INTO user_perks (discord_id, perk_type, perk_value, expires_at) VALUES (?, ?, 'ACTIVE', ?)",
+                    args: [targetId, perkType, expiresAt]
+                });
+
+                return interaction.reply({
+                    content: `👑 Đã cấp đặc quyền **${perkType}** cho thành viên <@${targetId}> thời hạn **${days} ngày**!`,
+                    ephemeral: true
+                });
+            }
         }
-    },
+    }
 };

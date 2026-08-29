@@ -4,11 +4,15 @@ const db = require('../../database');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('profile')
-        .setDescription('Xem hồ sơ cá nhân và số dư Coin'),
+        .setDescription('Xem hồ sơ cá nhân.'),
 
     async execute(interaction) {
         const userId = interaction.user.id;
-        let user = db.prepare('SELECT * FROM global_users WHERE discord_id = ?').get(userId);
+        const userRes = await db.execute({
+            sql: 'SELECT * FROM global_users WHERE discord_id = ?',
+            args: [userId]
+        });
+        let user = userRes.rows[0];
 
         if (!user) {
             return interaction.reply({
@@ -19,7 +23,10 @@ module.exports = {
 
         const today = new Date().toISOString().split('T')[0];
         if (user.last_task_date !== today) {
-            db.prepare('UPDATE global_users SET daily_task_count = 0, completed_providers = "", last_task_date = ? WHERE discord_id = ?').run(today, userId);
+            await db.execute({
+                sql: 'UPDATE global_users SET daily_task_count = 0, completed_providers = "", last_task_date = ? WHERE discord_id = ?',
+                args: [today, userId]
+            });
             user.daily_task_count = 0;
             user.completed_providers = '';
         }
@@ -32,9 +39,9 @@ module.exports = {
                 { name: '🆔 Discord ID', value: `\`${user.discord_id}\``, inline: true },
                 { name: '💰 Số Dư Coin', value: `**${user.coin_balance.toLocaleString()}** Coin`, inline: true },
                 { name: '🎯 Nhiệm Vụ Hôm Nay', value: `\`${user.daily_task_count}/3\` lượt`, inline: true },
-                { name: '📅 Ngày Tham Gia', value: new Date(user.created_at).toLocaleDateString('vi-VN'), inline: false }
+                { name: '📅 Ngày Sử Dụng Bot', value: new Date(user.created_at).toLocaleDateString('vi-VN'), inline: false }
             )
-            .setFooter({ text: 'Dữ liệu tài khoản đồng bộ toàn cục' });
+            .setFooter({ text: 'Dữ liệu được cập nhật tự động.' });
 
         return interaction.reply({ embeds: [embed] });
     }
