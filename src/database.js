@@ -8,8 +8,8 @@ const db = createClient({
 
 async function initDatabase() {
   try {
+    // 1. Tạo các bảng nếu chưa có
     await db.batch([
-      // 1. Quản lý người dùng
       `CREATE TABLE IF NOT EXISTS global_users (
           discord_id TEXT PRIMARY KEY,
           username TEXT NOT NULL,
@@ -20,14 +20,10 @@ async function initDatabase() {
           last_task_date TEXT DEFAULT CURRENT_DATE,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
-
-      // 2. Cài đặt hệ thống
       `CREATE TABLE IF NOT EXISTS system_settings (
           setting_key TEXT PRIMARY KEY,
           setting_value TEXT NOT NULL
       )`,
-
-      // 3. Cửa hàng
       `CREATE TABLE IF NOT EXISTS shop_items (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           item_id TEXT UNIQUE NOT NULL,
@@ -38,8 +34,6 @@ async function initDatabase() {
           description TEXT DEFAULT '',
           is_active INTEGER DEFAULT 1
       )`,
-
-      // 4. Kho đồ & Hóa đơn
       `CREATE TABLE IF NOT EXISTS user_inventory (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           invoice_id TEXT DEFAULT 'N/A',
@@ -51,8 +45,6 @@ async function initDatabase() {
           price INTEGER DEFAULT 0,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
-
-      // 5. Đặc quyền VIP
       `CREATE TABLE IF NOT EXISTS user_perks (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           discord_id TEXT NOT NULL,
@@ -60,8 +52,6 @@ async function initDatabase() {
           perk_value TEXT NOT NULL,
           expires_at INTEGER NOT NULL
       )`,
-
-      // 6. Link & Key
       `CREATE TABLE IF NOT EXISTS link_sessions (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           token TEXT UNIQUE NOT NULL,
@@ -78,32 +68,34 @@ async function initDatabase() {
           reward_coins INTEGER DEFAULT 50,
           is_used INTEGER DEFAULT 0,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )`,
-      `CREATE TABLE IF NOT EXISTS transactions (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          sender_id TEXT NOT NULL,
-          receiver_id TEXT NOT NULL,
-          amount INTEGER NOT NULL,
-          fee INTEGER NOT NULL,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`
     ], 'write');
 
-    // Tự động bổ sung các cột nếu database cũ chưa có
-    try { await db.execute("ALTER TABLE global_users ADD COLUMN total_links_completed INTEGER DEFAULT 0"); } catch (e) {}
-    try { await db.execute("ALTER TABLE global_users ADD COLUMN completed_providers TEXT DEFAULT ''"); } catch (e) {}
-    try { await db.execute("ALTER TABLE user_inventory ADD COLUMN invoice_id TEXT DEFAULT 'N/A'"); } catch (e) {}
-    try { await db.execute("ALTER TABLE user_inventory ADD COLUMN reward_type TEXT DEFAULT 'DM_ACCOUNT'"); } catch (e) {}
-    try { await db.execute("ALTER TABLE user_inventory ADD COLUMN price INTEGER DEFAULT 0"); } catch (e) {}
+    // 2. Bắt buộc cập nhật thêm cột thiếu vào Database Turso cũ
+    const migrations = [
+      "ALTER TABLE global_users ADD COLUMN total_links_completed INTEGER DEFAULT 0",
+      "ALTER TABLE global_users ADD COLUMN completed_providers TEXT DEFAULT ''",
+      "ALTER TABLE user_inventory ADD COLUMN invoice_id TEXT DEFAULT 'N/A'",
+      "ALTER TABLE user_inventory ADD COLUMN reward_type TEXT DEFAULT 'DM_ACCOUNT'",
+      "ALTER TABLE user_inventory ADD COLUMN price INTEGER DEFAULT 0"
+    ];
 
-    // Cấu hình mặc định
+    for (const sql of migrations) {
+      try {
+        await db.execute(sql);
+      } catch (e) {
+        // Bỏ qua nếu cột đã tồn tại
+      }
+    }
+
+    // 3. Khởi tạo cấu hình mặc định
     await db.execute("INSERT OR IGNORE INTO system_settings (setting_key, setting_value) VALUES ('task_reward_coins', '50')");
     await db.execute("INSERT OR IGNORE INTO system_settings (setting_key, setting_value) VALUES ('daily_task_limit', '3')");
     await db.execute("INSERT OR IGNORE INTO system_settings (setting_key, setting_value) VALUES ('trade_fee_percent', '5')");
 
-    console.log('✅ Khởi tạo và đồng bộ Database Turso thành công!');
+    console.log('✅ Khởi tạo và cập nhật Database Turso thành công!');
   } catch (err) {
-    console.error('❌ Lỗi kết nối Database Turso:', err.message);
+    console.error('❌ Lỗi Database:', err.message);
   }
 }
 
