@@ -1,0 +1,4 @@
+echo 20.18.0 > .node-version
+git add .node-version
+git commit -m "Set Node version 20"
+git push origin main

@@ -1,0 +1,4 @@
+cd /d E:\bot-discord
+echo node_modules/ > .gitignore
+echo .env >> .gitignore
+echo *.sqlite* >> .gitignore
