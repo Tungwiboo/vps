@@ -39,6 +39,10 @@ for (const file of eventFiles) {
     }
 }
 
+webApp.get('/', (req, res) => {
+    res.status(200).send('🤖 Bot Discord is Online 24/7!');
+});
+
 const PORT = process.env.PORT || 7860;
 webApp.listen(PORT, () => {
     console.log(`🌐 Web GetKey đang chạy tại cổng: ${PORT}`);
