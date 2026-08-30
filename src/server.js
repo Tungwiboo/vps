@@ -4,9 +4,8 @@ const crypto = require('crypto');
 const db = require('./database');
 
 const app = express();
-const PORT = process.env.PORT || 10000;
 
-// Cấu hình CORS thủ công (Không cần thư viện 'cors')
+// Cấu hình CORS thủ công
 app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -27,7 +26,7 @@ app.post('/api/verify', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Thiếu mã token xác thực!' });
         }
 
-        // 1. Kiểm tra token trong cơ sở dữ liệu Turso
+        // 1. Kiểm tra token trong Turso
         const sessionRes = await db.execute({
             sql: "SELECT * FROM link_sessions WHERE token = ?",
             args: [token]
@@ -54,7 +53,7 @@ app.post('/api/verify', async (req, res) => {
         const cleanProvider = (session.provider || 'Direct').toUpperCase().replace(/[^A-Z0-9]/g, '');
         const keyCode = 'KEY-' + cleanProvider + '-' + crypto.randomBytes(4).toString('hex').toUpperCase();
 
-        // 4. Lấy và cập nhật danh sách cổng đã vượt của User
+        // 4. Cập nhật danh sách cổng đã vượt
         const userRes = await db.execute({
             sql: "SELECT completed_providers FROM global_users WHERE discord_id = ?",
             args: [session.discord_id]
@@ -94,9 +93,5 @@ app.post('/api/verify', async (req, res) => {
     }
 });
 
-// Chạy Web Server
-app.listen(PORT, () => {
-    console.log(`🌐 Web GetKey đang chạy tại cổng: ${PORT}`);
-});
-
+// Chỉ xuất app, việc listen mở cổng sẽ do index.js thực hiện
 module.exports = app;
