@@ -54,9 +54,9 @@ module.exports = {
 
                 const keyInput = new TextInputBuilder()
                     .setCustomId('inp_redeem_key')
-                    .setLabel('Nhập mã Key của bạn:')
+                    .setLabel('Nhập mã Key:')
                     .setStyle(TextInputStyle.Short)
-                    .setPlaceholder('Ví dụ: KEY-XXXX hoặc VIP-XXXX')
+                    .setPlaceholder('Ví dụ: KEY-XXXX hoặc ROLE-XXXX')
                     .setRequired(true);
 
                 modal.addComponents(new ActionRowBuilder().addComponents(keyInput));
@@ -92,7 +92,7 @@ module.exports = {
                     new ActionRowBuilder().addComponents(
                         new TextInputBuilder()
                             .setCustomId('inp_action')
-                            .setLabel('Hành động (ADD = Thêm | SET = Đặt lại):')
+                            .setLabel('Hành động (ADD hoặc SET):')
                             .setStyle(TextInputStyle.Short)
                             .setValue('ADD')
                             .setRequired(true)
@@ -100,7 +100,7 @@ module.exports = {
                     new ActionRowBuilder().addComponents(
                         new TextInputBuilder()
                             .setCustomId('inp_amount')
-                            .setLabel('Số Coin (Nhập số âm -50 để trừ):')
+                            .setLabel('Số lượng Coin (nhập -50 để trừ):')
                             .setStyle(TextInputStyle.Short)
                             .setPlaceholder('Ví dụ: 500 hoặc -100')
                             .setRequired(true)
@@ -119,14 +119,14 @@ module.exports = {
                     new ActionRowBuilder().addComponents(
                         new TextInputBuilder()
                             .setCustomId('inp_target')
-                            .setLabel('Discord ID hoặc @Tag cần tra:')
+                            .setLabel('Discord ID hoặc @Tag:')
                             .setStyle(TextInputStyle.Short)
                             .setRequired(true)
                     ),
                     new ActionRowBuilder().addComponents(
                         new TextInputBuilder()
                             .setCustomId('inp_reset_task')
-                            .setLabel('Reset nhiệm vụ hôm nay? (YES / NO):')
+                            .setLabel('Reset nhiệm vụ hôm nay? (YES/NO):')
                             .setStyle(TextInputStyle.Short)
                             .setValue('NO')
                             .setRequired(true)
@@ -139,7 +139,7 @@ module.exports = {
             if (customId === 'btn_adm_add_shop') {
                 const modal = new ModalBuilder()
                     .setCustomId('modal_adm_add_shop')
-                    .setTitle('➕ Thêm Vật Phẩm Vào Shop');
+                    .setTitle('➕ Thêm Vật Phẩm Shop');
 
                 modal.addComponents(
                     new ActionRowBuilder().addComponents(
@@ -155,7 +155,7 @@ module.exports = {
                             .setCustomId('inp_item_name')
                             .setLabel('Tên hiển thị:')
                             .setStyle(TextInputStyle.Short)
-                            .setPlaceholder('ví dụ: 👑 Role VIP Gold')
+                            .setPlaceholder('ví dụ: 👑 Gói Role VIP')
                             .setRequired(true)
                     ),
                     new ActionRowBuilder().addComponents(
@@ -169,7 +169,7 @@ module.exports = {
                     new ActionRowBuilder().addComponents(
                         new TextInputBuilder()
                             .setCustomId('inp_type')
-                            .setLabel('Loại: ROLE_VIP / DM_ACCOUNT:')
+                            .setLabel('Loại (ROLE_VIP / DM_ACCOUNT):')
                             .setStyle(TextInputStyle.Short)
                             .setValue('ROLE_VIP')
                             .setRequired(true)
@@ -177,7 +177,7 @@ module.exports = {
                     new ActionRowBuilder().addComponents(
                         new TextInputBuilder()
                             .setCustomId('inp_data')
-                            .setLabel('Role ID (nếu ROLE) hoặc Dữ liệu:')
+                            .setLabel('Role ID hoặc Dữ liệu trả về:')
                             .setStyle(TextInputStyle.Paragraph)
                             .setRequired(true)
                     )
@@ -195,7 +195,7 @@ module.exports = {
                     new ActionRowBuilder().addComponents(
                         new TextInputBuilder()
                             .setCustomId('inp_key_type')
-                            .setLabel('Loại: ROLE (Role VIP) hoặc COIN:')
+                            .setLabel('Loại thưởng (ROLE hoặc COIN):')
                             .setStyle(TextInputStyle.Short)
                             .setValue('ROLE')
                             .setRequired(true)
@@ -203,7 +203,7 @@ module.exports = {
                     new ActionRowBuilder().addComponents(
                         new TextInputBuilder()
                             .setCustomId('inp_key_value')
-                            .setLabel('Role ID (nếu ROLE) hoặc Số Coin:')
+                            .setLabel('Role ID hoặc Số Coin:')
                             .setStyle(TextInputStyle.Short)
                             .setPlaceholder('Ví dụ: 123456789012345678 hoặc 500')
                             .setRequired(true)
@@ -211,7 +211,7 @@ module.exports = {
                     new ActionRowBuilder().addComponents(
                         new TextInputBuilder()
                             .setCustomId('inp_lock_user')
-                            .setLabel('Khóa theo Discord ID (hoặc GLOBAL):')
+                            .setLabel('Discord ID nhận (hoặc GLOBAL):')
                             .setStyle(TextInputStyle.Short)
                             .setValue('GLOBAL')
                             .setRequired(true)
@@ -230,7 +230,7 @@ module.exports = {
                     new ActionRowBuilder().addComponents(
                         new TextInputBuilder()
                             .setCustomId('inp_reward')
-                            .setLabel('Số Coin thưởng khi vượt 1 link:')
+                            .setLabel('Coin thưởng khi vượt link:')
                             .setStyle(TextInputStyle.Short)
                             .setValue('50')
                             .setRequired(true)
@@ -238,7 +238,7 @@ module.exports = {
                     new ActionRowBuilder().addComponents(
                         new TextInputBuilder()
                             .setCustomId('inp_limit')
-                            .setLabel('Giới hạn số link vượt / ngày:')
+                            .setLabel('Giới hạn link vượt/ngày:')
                             .setStyle(TextInputStyle.Short)
                             .setValue('3')
                             .setRequired(true)
@@ -246,7 +246,7 @@ module.exports = {
                     new ActionRowBuilder().addComponents(
                         new TextInputBuilder()
                             .setCustomId('inp_fee')
-                            .setLabel('Phí sàn chuyển tiền /pay (%):')
+                            .setLabel('Phí sàn chuyển tiền (%):')
                             .setStyle(TextInputStyle.Short)
                             .setValue('5')
                             .setRequired(true)
