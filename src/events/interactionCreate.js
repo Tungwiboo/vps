@@ -9,7 +9,6 @@ const {
 const crypto = require('crypto');
 const db = require('../database');
 
-// Hàm tiện ích trích xuất Discord ID từ input hoặc @tag
 function extractUserId(input) {
     if (!input) return null;
     const clean = input.replace(/[<@!>]/g, '').trim();
@@ -30,7 +29,7 @@ module.exports = {
             try {
                 await command.execute(interaction);
             } catch (error) {
-                console.error(`❌ Lỗi thực thi lệnh /${interaction.commandName}:`, error);
+                console.error(`❌ Lỗi thực thi /${interaction.commandName}:`, error);
                 const replyData = { content: '❌ Đã xảy ra lỗi khi thực thi lệnh này!', ephemeral: true };
                 if (interaction.deferred || interaction.replied) {
                     await interaction.editReply(replyData);
@@ -57,7 +56,7 @@ module.exports = {
                     .setCustomId('inp_redeem_key')
                     .setLabel('Nhập mã Key của bạn:')
                     .setStyle(TextInputStyle.Short)
-                    .setPlaceholder('Ví dụ: KEY-XXXX-XXXX hoặc VIP-XXXX-XXXX')
+                    .setPlaceholder('Ví dụ: KEY-XXXX hoặc VIP-XXXX')
                     .setRequired(true);
 
                 modal.addComponents(new ActionRowBuilder().addComponents(keyInput));
@@ -85,7 +84,7 @@ module.exports = {
                     new ActionRowBuilder().addComponents(
                         new TextInputBuilder()
                             .setCustomId('inp_target')
-                            .setLabel('Discord ID hoặc @Tag người nhận:')
+                            .setLabel('Discord ID hoặc @Tag:')
                             .setStyle(TextInputStyle.Short)
                             .setPlaceholder('Ví dụ: 1023456789012345678')
                             .setRequired(true)
@@ -93,7 +92,7 @@ module.exports = {
                     new ActionRowBuilder().addComponents(
                         new TextInputBuilder()
                             .setCustomId('inp_action')
-                            .setLabel('Hành động (ADD = Cộng/Trừ | SET = Đặt cố định):')
+                            .setLabel('Hành động (ADD = Thêm | SET = Đặt lại):')
                             .setStyle(TextInputStyle.Short)
                             .setValue('ADD')
                             .setRequired(true)
@@ -101,7 +100,7 @@ module.exports = {
                     new ActionRowBuilder().addComponents(
                         new TextInputBuilder()
                             .setCustomId('inp_amount')
-                            .setLabel('Số lượng Coin (nhập số âm -50 để trừ):')
+                            .setLabel('Số Coin (Nhập số âm -50 để trừ):')
                             .setStyle(TextInputStyle.Short)
                             .setPlaceholder('Ví dụ: 500 hoặc -100')
                             .setRequired(true)
@@ -120,14 +119,14 @@ module.exports = {
                     new ActionRowBuilder().addComponents(
                         new TextInputBuilder()
                             .setCustomId('inp_target')
-                            .setLabel('Discord ID hoặc @Tag cần tra cứu:')
+                            .setLabel('Discord ID hoặc @Tag cần tra:')
                             .setStyle(TextInputStyle.Short)
                             .setRequired(true)
                     ),
                     new ActionRowBuilder().addComponents(
                         new TextInputBuilder()
                             .setCustomId('inp_reset_task')
-                            .setLabel('Reset lượt nhiệm vụ hôm nay? (YES / NO):')
+                            .setLabel('Reset nhiệm vụ hôm nay? (YES / NO):')
                             .setStyle(TextInputStyle.Short)
                             .setValue('NO')
                             .setRequired(true)
@@ -146,9 +145,9 @@ module.exports = {
                     new ActionRowBuilder().addComponents(
                         new TextInputBuilder()
                             .setCustomId('inp_item_id')
-                            .setLabel('Mã ID Mặt Hàng (viết liền không dấu):')
+                            .setLabel('Mã ID (viết liền không dấu):')
                             .setStyle(TextInputStyle.Short)
-                            .setPlaceholder('ví dụ: vip_gold, acc_roblox')
+                            .setPlaceholder('ví dụ: vip_gold, acc_game')
                             .setRequired(true)
                     ),
                     new ActionRowBuilder().addComponents(
@@ -170,7 +169,7 @@ module.exports = {
                     new ActionRowBuilder().addComponents(
                         new TextInputBuilder()
                             .setCustomId('inp_type')
-                            .setLabel('Loại: ROLE_VIP / DM_ACCOUNT / PERK_PASS:')
+                            .setLabel('Loại: ROLE_VIP / DM_ACCOUNT:')
                             .setStyle(TextInputStyle.Short)
                             .setValue('ROLE_VIP')
                             .setRequired(true)
@@ -178,7 +177,7 @@ module.exports = {
                     new ActionRowBuilder().addComponents(
                         new TextInputBuilder()
                             .setCustomId('inp_data')
-                            .setLabel('Role ID (nếu ROLE_VIP) hoặc Dữ liệu trả về:')
+                            .setLabel('Role ID (nếu ROLE) hoặc Dữ liệu:')
                             .setStyle(TextInputStyle.Paragraph)
                             .setRequired(true)
                     )
@@ -186,7 +185,7 @@ module.exports = {
                 return interaction.showModal(modal);
             }
 
-            // Nút 4: Tạo Mã Redeem Đổi Thưởng
+            // Nút 4: Tạo Mã Key Đổi Thưởng
             if (customId === 'btn_adm_create_key') {
                 const modal = new ModalBuilder()
                     .setCustomId('modal_adm_create_key')
@@ -196,7 +195,7 @@ module.exports = {
                     new ActionRowBuilder().addComponents(
                         new TextInputBuilder()
                             .setCustomId('inp_key_type')
-                            .setLabel('Loại Thưởng: ROLE (Role VIP) hoặc COIN:')
+                            .setLabel('Loại: ROLE (Role VIP) hoặc COIN:')
                             .setStyle(TextInputStyle.Short)
                             .setValue('ROLE')
                             .setRequired(true)
@@ -204,7 +203,7 @@ module.exports = {
                     new ActionRowBuilder().addComponents(
                         new TextInputBuilder()
                             .setCustomId('inp_key_value')
-                            .setLabel('Role ID (nếu ROLE) hoặc Số Coin (nếu COIN):')
+                            .setLabel('Role ID (nếu ROLE) hoặc Số Coin:')
                             .setStyle(TextInputStyle.Short)
                             .setPlaceholder('Ví dụ: 123456789012345678 hoặc 500')
                             .setRequired(true)
@@ -212,7 +211,7 @@ module.exports = {
                     new ActionRowBuilder().addComponents(
                         new TextInputBuilder()
                             .setCustomId('inp_lock_user')
-                            .setLabel('Khóa theo Discord ID (để GLOBAL nếu tặng chung):')
+                            .setLabel('Khóa theo Discord ID (hoặc GLOBAL):')
                             .setStyle(TextInputStyle.Short)
                             .setValue('GLOBAL')
                             .setRequired(true)
@@ -239,7 +238,7 @@ module.exports = {
                     new ActionRowBuilder().addComponents(
                         new TextInputBuilder()
                             .setCustomId('inp_limit')
-                            .setLabel('Giới hạn số link được vượt / ngày:')
+                            .setLabel('Giới hạn số link vượt / ngày:')
                             .setStyle(TextInputStyle.Short)
                             .setValue('3')
                             .setRequired(true)
@@ -358,7 +357,7 @@ module.exports = {
                 return interaction.editReply({ content: `✅ Đã thêm/cập nhật món hàng **${itemName}** (\`${itemId}\`) vào Shop với giá **${price.toLocaleString()} Coin**!` });
             }
 
-            // Form: Tạo Mã Redeem Đổi Thưởng
+            // Form: Tạo Mã Key Đổi Thưởng
             if (interaction.customId === 'modal_adm_create_key') {
                 const keyType = interaction.fields.getTextInputValue('inp_key_type').trim().toUpperCase();
                 const rawVal = interaction.fields.getTextInputValue('inp_key_value').trim();
