@@ -17,7 +17,7 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
-// API Xác thực vượt link & Sinh Key
+// API Xác thực vượt link & Chống Bypass < 40 giây
 app.post('/api/verify', async (req, res) => {
     try {
         const { token } = req.body;
@@ -41,19 +41,33 @@ app.post('/api/verify', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Mã vượt link này đã được nhận thưởng trước đó rồi!' });
         }
 
-        if (Date.now() > session.expires_at) {
+        const now = Date.now();
+
+        // 2. Kiểm tra hết hạn phiên (10 phút)
+        if (now > session.expires_at) {
             return res.status(400).json({ success: false, message: 'Phiên vượt link đã hết hạn (quá 10 phút)!' });
         }
 
-        // 2. Lấy cấu hình số coin thưởng
+        // 3. Hệ thống chống Bypass: Yêu cầu thời gian thực hiện tối thiểu 40 giây
+        const MIN_REQUIRED_SECONDS = 40;
+        const elapsedSeconds = Math.floor((now - session.created_at) / 1000);
+
+        if (elapsedSeconds < MIN_REQUIRED_SECONDS) {
+            return res.status(403).json({
+                success: false,
+                message: `🛑 Phát hiện hành vi bất thường! Bạn hoàn thành chỉ trong ${elapsedSeconds}s ).`
+            });
+        }
+
+        // 4. Lấy cấu hình số coin thưởng
         const settingsRes = await db.execute("SELECT setting_value FROM system_settings WHERE setting_key = 'task_reward_coins'");
         const rewardCoins = parseInt(settingsRes.rows[0]?.setting_value) || 50;
 
-        // 3. Sinh mã Key ngẫu nhiên
+        // 5. Sinh mã Key ngẫu nhiên
         const cleanProvider = (session.provider || 'Direct').toUpperCase().replace(/[^A-Z0-9]/g, '');
         const keyCode = 'KEY-' + cleanProvider + '-' + crypto.randomBytes(4).toString('hex').toUpperCase();
 
-        // 4. Cập nhật danh sách cổng đã vượt
+        // 6. Cập nhật danh sách cổng đã vượt
         const userRes = await db.execute({
             sql: "SELECT completed_providers FROM global_users WHERE discord_id = ?",
             args: [session.discord_id]
@@ -61,7 +75,7 @@ app.post('/api/verify', async (req, res) => {
         const currentProviders = userRes.rows[0]?.completed_providers || '';
         const updatedProviders = currentProviders ? `${currentProviders},${session.provider}` : session.provider;
 
-        // 5. Ghi nhận Key & Cập nhật trạng thái
+        // 7. Ghi nhận Key & Hoàn tất phiên
         await db.batch([
             {
                 sql: `INSERT INTO claim_keys (key_code, discord_id, provider, reward_type, reward_coins, is_used) VALUES (?, ?, ?, 'COIN', ?, 0)`,
@@ -93,5 +107,4 @@ app.post('/api/verify', async (req, res) => {
     }
 });
 
-// Chỉ xuất app, việc listen mở cổng sẽ do index.js thực hiện
 module.exports = app;
