@@ -4,16 +4,16 @@ const db = require('../../database');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('pay')
-        .setDescription('Chuyển Coin cho người chơi khác (Phí giao dịch 5%)')
+        .setDescription('Chuyển Coin cho người chơi khác')
         .addUserOption(option => 
             option.setName('nguoi_nhan')
                 .setDescription('Người nhận Coin')
                 .setRequired(true))
         .addIntegerOption(option => 
             option.setName('so_coin')
-                .setDescription('Số lượng Coin muốn chuyển (Tối thiểu 1000 Coin)')
+                .setDescription('Số lượng Coin muốn chuyển (Tối thiểu 10 Coin)')
                 .setRequired(true)
-                .setMinValue(1000)),
+                .setMinValue(10)),
 
     async execute(interaction) {
         const senderId = interaction.user.id;
@@ -49,15 +49,17 @@ module.exports = {
 
         if (!receiver) {
             return interaction.reply({ 
-                content: `❌ Người nhận <@${targetUser.id}> chưa từng liên kết tài khoản (chưa dùng \`/link\`)!`, 
+                content: `❌ Người nhận <@${targetUser.id}> chưa kích hoạt tài khoản ví (chưa dùng \`/link\`)!`, 
                 ephemeral: true 
             });
         }
 
-        const fee = Math.ceil(amount * 0.05);
+        const settingsRes = await db.execute("SELECT setting_value FROM system_settings WHERE setting_key = 'trade_fee_percent'");
+        const feePercent = parseInt(settingsRes.rows[0]?.setting_value) || 5;
+
+        const fee = Math.ceil(amount * (feePercent / 100));
         const netAmount = amount - fee;
 
-        // Dùng db.batch để thực thi atomic transaction trên Turso
         await db.batch([
             {
                 sql: 'UPDATE global_users SET coin_balance = coin_balance - ? WHERE discord_id = ?',
@@ -74,15 +76,16 @@ module.exports = {
         ], 'write');
 
         const embed = new EmbedBuilder()
-            .setTitle('💸 Giao Dịch Chuyển Coin Thành Công')
+            .setTitle('💸 GIAO DỊCH CHUYỂN COIN THÀNH CÔNG')
             .setColor('#10B981')
             .addFields(
-                { name: '👤 Người Gửi', value: `<@${senderId}>`, inline: true },
+                { name: '👤 Người Chuyển', value: `<@${senderId}>`, inline: true },
                 { name: '🎯 Người Nhận', value: `<@${targetUser.id}>`, inline: true },
-                { name: '💰 Số Tiền Chuyển', value: `**${amount.toLocaleString()}** Coin`, inline: false },
-                { name: '📥 Thực Nhận (-5% phí)', value: `**${netAmount.toLocaleString()}** Coin`, inline: true },
-                { name: '🏷️ Phí Sàn', value: `\`${fee.toLocaleString()} Coin\``, inline: true }
+                { name: '💰 Số Tiền Gửi', value: `**${amount.toLocaleString()}** Coin`, inline: false },
+                { name: '📥 Thực Nhận', value: `**${netAmount.toLocaleString()}** Coin`, inline: true },
+                { name: '🏷️ Phí Sàn', value: `\`${fee.toLocaleString()} Coin (${feePercent}%)\``, inline: true }
             )
+            .setFooter({ text: 'Giao dịch được ghi nhận vào lịch sử hệ thống' })
             .setTimestamp();
 
         return interaction.reply({ embeds: [embed] });

@@ -6,7 +6,7 @@ const { generateShortLink } = require('../../utils/shortener');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('nhiemvu')
-        .setDescription('Nhận link nhiệm vụ vượt link kiếm Coin'),
+        .setDescription('Nhận link nhiệm vụ vượt link kiếm Coin hằng ngày'),
 
     async execute(interaction) {
         const userId = interaction.user.id;
@@ -21,7 +21,6 @@ module.exports = {
             return interaction.reply({ content: '⚠️ Bạn chưa liên kết tài khoản! Hãy dùng `/link` trước.', ephemeral: true });
         }
 
-        // Lấy giới hạn và phần thưởng cấu hình động từ Admin
         const settingsRes = await db.execute("SELECT * FROM system_settings");
         const settings = {};
         settingsRes.rows.forEach(r => settings[r.setting_key] = r.setting_value);
@@ -32,7 +31,7 @@ module.exports = {
         const today = new Date().toISOString().split('T')[0];
         if (user.last_task_date !== today) {
             await db.execute({
-                sql: 'UPDATE global_users SET daily_task_count = 0, completed_providers = "", last_task_date = ? WHERE discord_id = ?',
+                sql: "UPDATE global_users SET daily_task_count = 0, completed_providers = '', last_task_date = ? WHERE discord_id = ?",
                 args: [today, userId]
             });
             user.daily_task_count = 0;
@@ -73,14 +72,16 @@ module.exports = {
         });
 
         const embed = new EmbedBuilder()
-            .setTitle('🎯 Nhiệm Vụ Kiếm Coin Hằng Ngày')
+            .setTitle('🎯 NHIỆM VỤ VƯỢT LINK KIẾM COIN')
             .setColor('#F59E0B')
-            .setDescription(`Vượt link an toàn để nhận ngay **+${rewardCoins} Coin** vào ví!\n\n` +
-                            `• Tiến độ hôm nay: \`${user.daily_task_count}/${dailyLimit}\` lượt\n` +
-                            `• Cổng vượt link: \`${provider}\` *(Mỗi cổng chỉ vượt 1 lần/ngày)*\n` +
-                            `• Thời hạn link: \`10 phút\`\n` +
-                            `• Sau khi hoàn thành, dùng lệnh \`/redeem\` hoặc bấm nút dưới đây để nhận thưởng.`)
-            .setFooter({ text: 'Lưu ý: Không sử dụng tool bypass để tránh bị khóa tài khoản.' });
+            .setDescription(`Vượt link an toàn để nhận ngay **+${rewardCoins} Coin** vào tài khoản ví!`)
+            .addFields(
+                { name: '📊 Tiến Độ Hôm Nay', value: `\`${user.daily_task_count}/${dailyLimit}\` lượt`, inline: true },
+                { name: '🌐 Cổng Vượt Link', value: `\`${provider}\``, inline: true },
+                { name: '⏳ Thời Hạn Link', value: '`10 Phút`', inline: true },
+                { name: '💡 Hướng Dẫn', value: 'Sau khi vượt link xong và nhận mã Key trên Web, dùng lệnh `/redeem` hoặc bấm nút **🎁 Nhập Mã Key** bên dưới để nhận thưởng.', inline: false }
+            )
+            .setFooter({ text: 'Nghiêm cấm dùng tool bypass để tránh bị khóa tài khoản' });
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()

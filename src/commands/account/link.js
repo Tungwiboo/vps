@@ -4,7 +4,7 @@ const db = require('../../database');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('link')
-        .setDescription('Kích hoạt tài khoản Discord'),
+        .setDescription('Kích hoạt tài khoản ví Discord trên hệ thống toàn cục'),
 
     async execute(interaction) {
         const userId = interaction.user.id;
@@ -18,7 +18,7 @@ module.exports = {
 
         if (checkUser) {
             return interaction.reply({
-                content: `⚠️ Discord ID \`${userId}\` đã được kích hoạt trước đó.`,
+                content: `⚠️ Tài khoản Discord <@${userId}> đã được kích hoạt từ trước!`,
                 ephemeral: true
             });
         }
@@ -29,15 +29,16 @@ module.exports = {
         });
 
         const embed = new EmbedBuilder()
-            .setTitle('🎉 Kích Hoạt Tài Khoản Thành Công')
+            .setTitle('🎉 KÍCH HOẠT TÀI KHOẢN THÀNH CÔNG')
             .setColor('#10B981')
-            .setDescription('Tài khoản của bạn đã được kích hoạt.')
+            .setDescription('Tài khoản của bạn đã được kết nối với cơ sở dữ liệu đám mây.')
             .addFields(
-                { name: '🆔 Discord ID Số', value: `\`${userId}\``, inline: true },
-                { name: '👤 Tên Tài Khoản', value: username, inline: true },
+                { name: '🆔 Discord ID', value: `\`${userId}\``, inline: true },
+                { name: '👤 Tên Người Dùng', value: username, inline: true },
                 { name: '💰 Số Dư Khởi Tạo', value: '`0 Coin`', inline: true }
             )
-            .setFooter({ text: 'Dữ liệu được cập nhật tự động.' });
+            .setFooter({ text: 'Dùng /nhiemvu để bắt đầu kiếm Coin' })
+            .setTimestamp();
 
         return interaction.reply({ embeds: [embed] });
     }

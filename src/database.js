@@ -8,8 +8,9 @@ const db = createClient({
 
 async function initDatabase() {
   try {
-    // 1. Tạo các bảng nếu chưa có
+    // 1. Tạo đầy đủ các bảng dữ liệu nếu chưa có
     await db.batch([
+      // Quản lý người dùng
       `CREATE TABLE IF NOT EXISTS global_users (
           discord_id TEXT PRIMARY KEY,
           username TEXT NOT NULL,
@@ -20,10 +21,14 @@ async function initDatabase() {
           last_task_date TEXT DEFAULT CURRENT_DATE,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
+
+      // Cài đặt hệ thống (Admin tùy biến)
       `CREATE TABLE IF NOT EXISTS system_settings (
           setting_key TEXT PRIMARY KEY,
           setting_value TEXT NOT NULL
       )`,
+
+      // Danh mục vật phẩm Shop
       `CREATE TABLE IF NOT EXISTS shop_items (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           item_id TEXT UNIQUE NOT NULL,
@@ -34,6 +39,8 @@ async function initDatabase() {
           description TEXT DEFAULT '',
           is_active INTEGER DEFAULT 1
       )`,
+
+      // Kho đồ & Lịch sử hóa đơn mua hàng
       `CREATE TABLE IF NOT EXISTS user_inventory (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           invoice_id TEXT DEFAULT 'N/A',
@@ -45,6 +52,8 @@ async function initDatabase() {
           price INTEGER DEFAULT 0,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
+
+      // Đặc quyền VIP
       `CREATE TABLE IF NOT EXISTS user_perks (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           discord_id TEXT NOT NULL,
@@ -52,6 +61,8 @@ async function initDatabase() {
           perk_value TEXT NOT NULL,
           expires_at INTEGER NOT NULL
       )`,
+
+      // Phiên vượt link
       `CREATE TABLE IF NOT EXISTS link_sessions (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           token TEXT UNIQUE NOT NULL,
@@ -61,20 +72,36 @@ async function initDatabase() {
           created_at INTEGER NOT NULL,
           expires_at INTEGER NOT NULL
       )`,
+
+      // Mã Key nhận thưởng & Role VIP
       `CREATE TABLE IF NOT EXISTS claim_keys (
           key_code TEXT PRIMARY KEY,
           discord_id TEXT NOT NULL,
           provider TEXT DEFAULT '',
+          reward_type TEXT DEFAULT 'COIN',
           reward_coins INTEGER DEFAULT 50,
+          reward_role_id TEXT DEFAULT '',
           is_used INTEGER DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`,
+
+      // Lịch sử giao dịch chuyển coin (/pay)
+      `CREATE TABLE IF NOT EXISTS transactions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          sender_id TEXT NOT NULL,
+          receiver_id TEXT NOT NULL,
+          amount INTEGER NOT NULL,
+          fee INTEGER NOT NULL,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`
     ], 'write');
 
-    // 2. Bắt buộc cập nhật thêm cột thiếu vào Database Turso cũ
+    // 2. Tự động cập nhật cột mới vào Database Turso cũ nếu thiếu
     const migrations = [
       "ALTER TABLE global_users ADD COLUMN total_links_completed INTEGER DEFAULT 0",
       "ALTER TABLE global_users ADD COLUMN completed_providers TEXT DEFAULT ''",
+      "ALTER TABLE claim_keys ADD COLUMN reward_type TEXT DEFAULT 'COIN'",
+      "ALTER TABLE claim_keys ADD COLUMN reward_role_id TEXT DEFAULT ''",
       "ALTER TABLE user_inventory ADD COLUMN invoice_id TEXT DEFAULT 'N/A'",
       "ALTER TABLE user_inventory ADD COLUMN reward_type TEXT DEFAULT 'DM_ACCOUNT'",
       "ALTER TABLE user_inventory ADD COLUMN price INTEGER DEFAULT 0"
@@ -84,7 +111,7 @@ async function initDatabase() {
       try {
         await db.execute(sql);
       } catch (e) {
-        // Bỏ qua nếu cột đã tồn tại
+        // Bỏ qua nếu cột đã tồn tại trong database
       }
     }
 

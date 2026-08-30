@@ -4,7 +4,7 @@ const db = require('../../database');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('inventory')
-        .setDescription('Xem kho đồ, các mã Key và hóa đơn bạn đã mua'),
+        .setDescription('Xem kho đồ, các mã Key đã mua và lịch sử hóa đơn'),
 
     async execute(interaction) {
         const userId = interaction.user.id;
@@ -17,7 +17,7 @@ module.exports = {
 
         if (items.length === 0) {
             return interaction.reply({
-                content: '🎒 Túi đồ và lịch sử mua sắm của bạn đang trống! Hãy dùng lệnh `/shop` để mua sắm nhé.',
+                content: '🎒 Túi đồ của bạn đang trống! Hãy ghé `/shop` để mua sắm nhé.',
                 ephemeral: true
             });
         }
@@ -26,17 +26,17 @@ module.exports = {
             .setTitle(`🎒 KHO ĐỒ & HÓA ĐƠN: ${interaction.user.username}`)
             .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
             .setColor('#06B6D4')
-            .setDescription('Dưới đây là danh sách các mặt hàng và mã hóa đơn bạn đã mua gần nhất:');
+            .setDescription('Dưới đây là 10 mặt hàng & hóa đơn gần nhất bạn đang sở hữu:');
 
         items.forEach((item, index) => {
             embed.addFields({
-                name: `${index + 1}. 🧾 ${item.item_name} (Mã HĐ: \`${item.invoice_id || 'N/A'}\`)`,
-                value: `• **Giá mua:** \`${item.price || 0} Coin\`\n• **Dữ liệu / Key:** \`${item.item_data}\`\n• **Ngày mua:** \`${new Date(item.created_at).toLocaleDateString('vi-VN')}\``,
+                name: `\`#${index + 1}\` 🧾 ${item.item_name} | HĐ: \`${item.invoice_id || 'N/A'}\``,
+                value: `> 💰 **Giá mua:** \`${item.price || 0} Coin\`\n> 📦 **Nội dung / Key:** \`${item.item_data}\`\n> 📅 **Ngày mua:** \`${new Date(item.created_at).toLocaleDateString('vi-VN')}\``,
                 inline: false
             });
         });
 
-        embed.setFooter({ text: 'Bảo mật thông tin hóa đơn và mã Key, tuyệt đối không chia sẻ cho người khác' });
+        embed.setFooter({ text: 'Bảo mật các mã Key cẩn thận, không chia sẻ cho người khác' });
 
         return interaction.reply({ embeds: [embed], ephemeral: true });
     }
