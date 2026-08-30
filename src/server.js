@@ -1,15 +1,22 @@
 const express = require('express');
-const cors = require('cors');
 const path = require('path');
 const crypto = require('crypto');
-const db = require('./database'); // hoặc require('./src/database') tùy vị trí file
+const db = require('./database');
 
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-app.use(cors());
+// Cấu hình CORS thủ công (Không cần thư viện 'cors')
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    if (req.method === 'OPTIONS') return res.sendStatus(200);
+    next();
+});
+
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../public'))); // hoặc path.join(__dirname, 'public')
+app.use(express.static(path.join(__dirname, '../public')));
 
 // API Xác thực vượt link & Sinh Key
 app.post('/api/verify', async (req, res) => {
@@ -20,7 +27,7 @@ app.post('/api/verify', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Thiếu mã token xác thực!' });
         }
 
-        // 1. Kiểm tra phiên link trong database
+        // 1. Kiểm tra token trong cơ sở dữ liệu Turso
         const sessionRes = await db.execute({
             sql: "SELECT * FROM link_sessions WHERE token = ?",
             args: [token]
@@ -28,7 +35,7 @@ app.post('/api/verify', async (req, res) => {
         const session = sessionRes.rows[0];
 
         if (!session) {
-            return res.status(404).json({ success: false, message: 'Phiên vượt link không hợp lệ hoặc đã hết hạn!' });
+            return res.status(404).json({ success: false, message: 'Phiên vượt link không tồn tại hoặc đã bị hủy!' });
         }
 
         if (session.status === 'COMPLETED') {
@@ -36,17 +43,18 @@ app.post('/api/verify', async (req, res) => {
         }
 
         if (Date.now() > session.expires_at) {
-            return res.status(400).json({ success: false, message: 'Phiên vượt link đã quá thời gian quy định (10 phút)!' });
+            return res.status(400).json({ success: false, message: 'Phiên vượt link đã hết hạn (quá 10 phút)!' });
         }
 
-        // 2. Lấy cấu hình số coin thưởng từ hệ thống
+        // 2. Lấy cấu hình số coin thưởng
         const settingsRes = await db.execute("SELECT setting_value FROM system_settings WHERE setting_key = 'task_reward_coins'");
         const rewardCoins = parseInt(settingsRes.rows[0]?.setting_value) || 50;
 
         // 3. Sinh mã Key ngẫu nhiên
-        const keyCode = 'KEY-' + session.provider.toUpperCase().replace(/\s+/g, '') + '-' + crypto.randomBytes(4).toString('hex').toUpperCase();
+        const cleanProvider = (session.provider || 'Direct').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const keyCode = 'KEY-' + cleanProvider + '-' + crypto.randomBytes(4).toString('hex').toUpperCase();
 
-        // 4. Lấy danh sách cổng đã vượt của User để nối thêm
+        // 4. Lấy và cập nhật danh sách cổng đã vượt của User
         const userRes = await db.execute({
             sql: "SELECT completed_providers FROM global_users WHERE discord_id = ?",
             args: [session.discord_id]
@@ -56,17 +64,14 @@ app.post('/api/verify', async (req, res) => {
 
         // 5. Ghi nhận Key & Cập nhật trạng thái
         await db.batch([
-            // Tạo Key nhận thưởng
             {
                 sql: `INSERT INTO claim_keys (key_code, discord_id, provider, reward_type, reward_coins, is_used) VALUES (?, ?, ?, 'COIN', ?, 0)`,
                 args: [keyCode, session.discord_id, session.provider, rewardCoins]
             },
-            // Đánh dấu phiên vượt link đã xong
             {
                 sql: "UPDATE link_sessions SET status = 'COMPLETED' WHERE token = ?",
                 args: [token]
             },
-            // Cập nhật danh sách cổng đã vượt của user
             {
                 sql: "UPDATE global_users SET completed_providers = ? WHERE discord_id = ?",
                 args: [updatedProviders, session.discord_id]
