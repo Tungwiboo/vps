@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cổng Xác Thực Vượt Link - Nhận Key Thưởng</title>
+    <title>Xác Thực Nhận Key</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,38 +20,26 @@
             -webkit-backdrop-filter: blur(16px);
             border: 1px solid rgba(255, 255, 255, 0.08);
         }
-        .glow-effect {
-            box-shadow: 0 0 50px -10px rgba(99, 102, 241, 0.25);
-        }
-        @keyframes pulse-glow {
-            0%, 100% { opacity: 0.6; transform: scale(1); }
-            50% { opacity: 1; transform: scale(1.05); }
-        }
-        .animate-glow { animation: pulse-glow 3s infinite ease-in-out; }
+        .glow-effect { box-shadow: 0 0 50px -10px rgba(99, 102, 241, 0.25); }
     </style>
 </head>
 <body class="text-slate-100 min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
 
-    <!-- Background Decor -->
-    <div class="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none animate-glow"></div>
-    <div class="absolute bottom-10 right-10 w-72 h-72 bg-emerald-600/10 rounded-full blur-3xl pointer-events-none"></div>
-
-    <div class="max-w-md w-full glass-card glow-effect rounded-3xl p-8 relative z-10 overflow-hidden shadow-2xl transition-all duration-300">
-        <!-- Đường viền sáng Gradient -->
+    <div class="max-w-md w-full glass-card glow-effect rounded-3xl p-8 relative z-10 overflow-hidden shadow-2xl">
         <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-400"></div>
 
         <!-- Header -->
         <div class="text-center mb-6">
-            <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 mb-3 shadow-inner">
+            <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 mb-3">
                 <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path>
                 </svg>
             </div>
             <h1 class="text-xl font-extrabold tracking-tight text-white">XÁC THỰC GETKEY</h1>
-            <p class="text-xs text-slate-400 mt-1">Vui lòng không đóng hoặc tải lại trang web</p>
+            <p class="text-xs text-slate-400 mt-1">Hệ thống phân phối mã quà tặng tự động</p>
         </div>
 
-        <!-- TRẠNG THÁI 1: ĐANG KIỂM TRA PHIÊN -->
+        <!-- TRẠNG THÁI 1: LOADING -->
         <div id="box-loading" class="space-y-4 py-4 text-center">
             <div class="relative w-16 h-16 mx-auto">
                 <div class="w-16 h-16 rounded-full border-4 border-slate-800 border-t-indigo-500 animate-spin"></div>
@@ -59,13 +47,11 @@
                     <span class="text-xs font-bold text-indigo-400">⚡</span>
                 </div>
             </div>
-            <div class="space-y-1">
-                <p class="text-sm font-semibold text-slate-200">Đang kiểm tra tính hợp lệ...</p>
-                <p class="text-xs text-slate-500">Vui lòng không đóng hoặc tải lại trang web</p>
-            </div>
+            <p class="text-sm font-semibold text-slate-200">Đang kiểm tra tính hợp lệ...</p>
+            <p class="text-xs text-slate-500">Vui lòng không đóng hoặc tải lại trang web</p>
         </div>
 
-        <!-- TRẠNG THÁI 2: THÀNH CÔNG (HIỆN KEY) -->
+        <!-- TRẠNG THÁI 2: THÀNH CÔNG -->
         <div id="box-success" class="hidden space-y-5">
             <div class="flex items-center justify-between p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
                 <div class="flex items-center gap-2.5">
@@ -75,47 +61,37 @@
                 <span id="coin-badge" class="text-xs font-extrabold font-mono bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-lg border border-emerald-500/30">+50 COIN</span>
             </div>
 
-            <!-- Khung chứa Key -->
             <div class="space-y-2">
                 <label class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Mã Key Của Bạn</label>
-                <div class="relative flex items-center">
-                    <input type="text" id="output-key" readonly 
-                        class="w-full bg-slate-950/80 border border-slate-700/80 text-center font-mono font-bold text-amber-300 text-sm tracking-wider px-4 py-3.5 rounded-2xl focus:outline-none focus:border-indigo-500 transition-all select-all shadow-inner">
-                </div>
+                <input type="text" id="output-key" readonly 
+                    class="w-full bg-slate-950/80 border border-slate-700 text-center font-mono font-bold text-amber-300 text-sm tracking-wider px-4 py-3.5 rounded-2xl focus:outline-none select-all shadow-inner">
             </div>
 
-            <!-- Nút Copy -->
-            <button onclick="copyKey()" id="btn-copy" 
-                class="w-full py-3.5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-indigo-600 hover:from-indigo-500 hover:to-indigo-500 active:scale-[0.98] text-white font-bold text-sm rounded-2xl transition-all shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
-                </svg>
+            <button onclick="copyKey()" 
+                class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white font-bold text-sm rounded-2xl transition-all shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 cursor-pointer">
                 <span>Sao Chép Mã Key</span>
             </button>
 
-            <!-- Hướng dẫn Discord -->
-        <!-- TRẠNG THÁI 3: BÁO LỖI -->
-        <div id="box-error" class="hidden space-y-4 text-center">
-            <div class="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl space-y-2">
-                <div class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-rose-500/20 text-rose-400 text-lg mb-1">✕</div>
-                <h3 class="text-sm font-bold text-rose-400">Xác Thực Thất Bại</h3>
-                <p id="error-message" class="text-xs text-rose-300/80 leading-relaxed"></p>
+            <div class="p-3.5 bg-slate-950/50 border border-slate-800 rounded-2xl text-center space-y-1">
+                <p class="text-xs text-slate-400">Vào Discord và nhập lệnh:</p>
+                <code class="inline-block bg-slate-800 text-indigo-400 font-mono text-xs font-semibold px-2.5 py-1 rounded-lg border border-slate-700">/redeem ma_key: [Mã của bạn]</code>
             </div>
-            <p class="text-[11px] text-slate-500">Vui lòng quay lại Bot và dùng lệnh <code class="text-slate-400">/nhiemvu</code> để lấy link mới.</p>
         </div>
 
-        <!-- Footer -->
-        <div class="mt-6 pt-4 border-t border-slate-800/60 text-center">
-            <span class="text-[11px] text-slate-500 font-medium">Web Lượt Link.</span>
+        <!-- TRẠNG THÁI 3: THẤT BẠI -->
+        <div id="box-error" class="hidden space-y-4 text-center">
+            <div class="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl space-y-2">
+                <div class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-rose-500/20 text-rose-400 text-lg">✕</div>
+                <h3 class="text-sm font-bold text-rose-400">Xác Thực Thất Bại</h3>
+                <p id="error-message" class="text-xs text-rose-300/90 leading-relaxed"></p>
+            </div>
+            <p class="text-[11px] text-slate-500">Vui lòng quay lại Discord dùng lệnh <code class="text-slate-400">/nhiemvu</code> để lấy link mới.</p>
         </div>
     </div>
 
     <!-- Toast Copy -->
-    <div id="toast" class="fixed bottom-5 right-5 bg-emerald-500 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-xl shadow-xl transition-all duration-300 translate-y-20 opacity-0 pointer-events-none flex items-center gap-2">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-        </svg>
-        <span>Đã sao chép mã Key vào bộ nhớ tạm!</span>
+    <div id="toast" class="fixed bottom-5 right-5 bg-emerald-500 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-xl shadow-xl transition-all duration-300 translate-y-20 opacity-0 pointer-events-none">
+        Đã sao chép mã Key vào bộ nhớ tạm!
     </div>
 
     <script>
@@ -123,12 +99,11 @@
 
         async function verify() {
             if (!token) {
-                showError('Không Lưu Mã Tải Lại Trang Thì Vượt Link Lại Nhé =))).');
+                showError('Lỗi Sinh Mã!');
                 return;
             }
 
             try {
-                // Sử dụng endpoint chuẩn /api/verify
                 const res = await fetch('/api/verify', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -138,7 +113,7 @@
                 const data = await res.json();
                 document.getElementById('box-loading').classList.add('hidden');
 
-                if (data.success) {
+                if (data && data.success) {
                     if (data.reward_coins) {
                         document.getElementById('coin-badge').innerText = `+${data.reward_coins} COIN`;
                     }
@@ -148,21 +123,20 @@
                     showError(data.message || 'Mã xác thực không hợp lệ hoặc đã hết hạn!');
                 }
             } catch (err) {
+                console.error(err);
                 showError('Không thể kết nối đến máy chủ xác thực. Vui lòng thử lại sau!');
             }
         }
 
         function showError(msg) {
             document.getElementById('box-loading').classList.add('hidden');
-            const errBox = document.getElementById('box-error');
             document.getElementById('error-message').innerText = msg;
-            errBox.classList.remove('hidden');
+            document.getElementById('box-error').classList.remove('hidden');
         }
 
         function copyKey() {
             const input = document.getElementById('output-key');
             navigator.clipboard.writeText(input.value);
-
             const toast = document.getElementById('toast');
             toast.classList.remove('translate-y-20', 'opacity-0');
             setTimeout(() => {
@@ -170,7 +144,7 @@
             }, 2500);
         }
 
-        verify();
+        window.onload = verify;
     </script>
 </body>
 </html>
