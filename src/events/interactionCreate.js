@@ -19,17 +19,29 @@ function extractUserId(input) {
 module.exports = {
     name: 'interactionCreate',
     async execute(interaction, client) {
+        console.log(`\n--------------------------------------------------`);
+        console.log(`📩 [NHẬN TƯƠNG TÁC] Loại: ${interaction.type} | User: ${interaction.user.tag} (${interaction.user.id}) | Server: ${interaction.guild?.name || 'DM'}`);
 
-        // 1. Xử lý Slash Commands
+        // 1. XỬ LÝ SLASH COMMAND
         if (interaction.isChatInputCommand()) {
+            console.log(`👉 Đang gọi lệnh: /${interaction.commandName}`);
             const command = client.commands.get(interaction.commandName);
-            if (!command) return;
+            
+            if (!command) {
+                console.error(`❌ [LỖI LỆNH] Không tìm thấy lệnh /${interaction.commandName} trong client.commands!`);
+                return interaction.reply({ 
+                    content: `❌ Lỗi: Lệnh \`/${interaction.commandName}\` chưa được nạp vào bộ nhớ!`, 
+                    flags: MessageFlags.Ephemeral 
+                }).catch(() => {});
+            }
 
             try {
+                console.log(`▶️ Bắt đầu execute: /${interaction.commandName}`);
                 await command.execute(interaction);
+                console.log(`✅ [HOÀN TẤT] /${interaction.commandName}`);
             } catch (error) {
-                console.error(`❌ Lỗi lệnh /${interaction.commandName}:`, error);
-                const errorMsg = { content: '⚠️ Có lỗi xảy ra khi thực thi lệnh!', flags: MessageFlags.Ephemeral };
+                console.error(`💥 [CRASH THỰC THI] Lỗi văng ra trong file lệnh /${interaction.commandName}:`, error);
+                const errorMsg = { content: `⚠️ Lỗi thực thi code: \`${error.message}\``, flags: MessageFlags.Ephemeral };
                 if (interaction.deferred || interaction.replied) {
                     await interaction.editReply(errorMsg).catch(() => {});
                 } else if (interaction.isRepliable()) {
@@ -39,8 +51,9 @@ module.exports = {
             return;
         }
 
-        // 2. Xử lý Nút bấm Modal (Mở trực tiếp không qua deferReply)
+        // 2. XỬ LÝ NÚT BẤM (BUTTONS)
         if (interaction.isButton()) {
+            console.log(`👉 Bấm nút: ${interaction.customId}`);
             const customId = interaction.customId;
 
             if (customId === 'btn_open_redeem_modal') {
@@ -56,7 +69,7 @@ module.exports = {
                     .setRequired(true);
 
                 modal.addComponents(new ActionRowBuilder().addComponents(keyInput));
-                return await interaction.showModal(modal);
+                return await interaction.showModal(modal).catch(err => console.error('Lỗi showModal:', err));
             }
 
             if (customId.startsWith('btn_adm_')) {
@@ -127,86 +140,92 @@ module.exports = {
             return;
         }
 
-        // 3. Xử lý Select Menu Shop
+        // 3. XỬ LÝ SELECT MENU SHOP
         if (interaction.isStringSelectMenu() && interaction.customId === 'select_shop_checkout') {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
             const userId = interaction.user.id;
             const selectedItemId = interaction.values[0];
 
-            const itemRes = await db.execute({
-                sql: "SELECT * FROM shop_items WHERE item_id = ? AND is_active = 1",
-                args: [selectedItemId]
-            });
-            const item = itemRes.rows[0];
-
-            if (!item) {
-                return interaction.editReply({ content: '❌ Mặt hàng này hiện không còn khả dụng!' });
-            }
-
-            const freshUserRes = await db.execute({
-                sql: "SELECT coin_balance FROM global_users WHERE discord_id = ?",
-                args: [userId]
-            });
-            const currentCoins = freshUserRes.rows[0]?.coin_balance || 0;
-
-            if (currentCoins < item.price) {
-                return interaction.editReply({
-                    content: `❌ **Số dư không đủ!**\nBạn có: \`${currentCoins.toLocaleString()} Coin\` | Còn thiếu: \`${(item.price - currentCoins).toLocaleString()} Coin\`.`
-                });
-            }
-
-            const invoiceId = 'INV-' + Date.now().toString().slice(-6) + '-' + crypto.randomBytes(2).toString('hex').toUpperCase();
-            const newBalance = currentCoins - item.price;
-            let deliveryContent = '';
-            let guideText = '';
-
-            if (['ROLE_VIP', 'ROLE_EXCLUSIVE', 'ROLE'].includes(item.reward_type)) {
-                const generatedKey = 'VIP-' + crypto.randomBytes(3).toString('hex').toUpperCase() + '-' + crypto.randomBytes(3).toString('hex').toUpperCase();
-                const targetRoleId = item.reward_data.trim();
-
-                await db.execute({
-                    sql: "INSERT INTO claim_keys (key_code, discord_id, provider, reward_type, reward_role_id, reward_coins, is_used) VALUES (?, ?, 'Shop_VIP', 'ROLE_VIP', ?, 0, 0)",
-                    args: [generatedKey, userId, targetRoleId]
-                });
-
-                deliveryContent = `🔑 MÃ REDEEM ROLE: ${generatedKey}\n🏷️ ROLE QUY ĐỔI: <@&${targetRoleId}>`;
-                guideText = `Dùng lệnh \`/redeem ma_key:${generatedKey}\` trên server để nhận Role ngay!`;
-            } else {
-                deliveryContent = item.reward_data;
-                guideText = 'Thông tin vật phẩm đã được lưu an toàn vào kho đồ /inventory.';
-            }
-
-            await db.batch([
-                { sql: "UPDATE global_users SET coin_balance = coin_balance - ? WHERE discord_id = ?", args: [item.price, userId] },
-                { sql: `INSERT INTO user_inventory (invoice_id, discord_id, item_id, item_name, item_data, reward_type, price) VALUES (?, ?, ?, ?, ?, ?, ?)`, args: [invoiceId, userId, item.item_id, item.item_name, deliveryContent, item.reward_type, item.price] }
-            ], 'write');
-
-            const invoiceEmbed = new EmbedBuilder()
-                .setTitle('🧾 HÓA ĐƠN ĐỔI QUÀ THÀNH CÔNG')
-                .setColor('#10B981')
-                .addFields(
-                    { name: '🔖 Mã Hóa Đơn', value: `\`${invoiceId}\``, inline: true },
-                    { name: '👤 Người Nhận', value: `<@${userId}>`, inline: true },
-                    { name: '📦 Sản Phẩm', value: `**${item.item_name}**`, inline: false },
-                    { name: '💰 Đã Trừ', value: `\`-${item.price.toLocaleString()} Coin\``, inline: true },
-                    { name: '💳 Số Dư Còn', value: `**${newBalance.toLocaleString()} Coin**`, inline: true },
-                    { name: '🎁 Chi Tiết Bàn Giao', value: `\`\`\`text\n${deliveryContent}\n\`\`\``, inline: false },
-                    { name: '💡 Hướng Dẫn', value: guideText, inline: false }
-                )
-                .setFooter({ text: 'Xem lại hóa đơn bất kỳ lúc nào qua lệnh /inventory' })
-                .setTimestamp();
-
             try {
-                await interaction.user.send({ embeds: [invoiceEmbed] });
-            } catch (e) {}
+                const itemRes = await db.execute({
+                    sql: "SELECT * FROM shop_items WHERE item_id = ? AND is_active = 1",
+                    args: [selectedItemId]
+                });
+                const item = itemRes.rows[0];
 
-            return interaction.editReply({
-                content: `🎉 **Đổi quà thành công!**\n> Mã hóa đơn: \`${invoiceId}\`\n📬 Chi tiết đã được gửi qua DM (hoặc xem tại \`/inventory\`).`
-            });
+                if (!item) {
+                    return interaction.editReply({ content: '❌ Mặt hàng này hiện không còn khả dụng!' });
+                }
+
+                const freshUserRes = await db.execute({
+                    sql: "SELECT coin_balance FROM global_users WHERE discord_id = ?",
+                    args: [userId]
+                });
+                const currentCoins = freshUserRes.rows[0]?.coin_balance || 0;
+
+                if (currentCoins < item.price) {
+                    return interaction.editReply({
+                        content: `❌ **Số dư không đủ!**\nBạn có: \`${currentCoins.toLocaleString()} Coin\` | Còn thiếu: \`${(item.price - currentCoins).toLocaleString()} Coin\`.`
+                    });
+                }
+
+                const invoiceId = 'INV-' + Date.now().toString().slice(-6) + '-' + crypto.randomBytes(2).toString('hex').toUpperCase();
+                const newBalance = currentCoins - item.price;
+                let deliveryContent = '';
+                let guideText = '';
+
+                if (['ROLE_VIP', 'ROLE_EXCLUSIVE', 'ROLE'].includes(item.reward_type)) {
+                    const generatedKey = 'VIP-' + crypto.randomBytes(3).toString('hex').toUpperCase() + '-' + crypto.randomBytes(3).toString('hex').toUpperCase();
+                    const targetRoleId = item.reward_data.trim();
+
+                    await db.execute({
+                        sql: "INSERT INTO claim_keys (key_code, discord_id, provider, reward_type, reward_role_id, reward_coins, is_used) VALUES (?, ?, 'Shop_VIP', 'ROLE_VIP', ?, 0, 0)",
+                        args: [generatedKey, userId, targetRoleId]
+                    });
+
+                    deliveryContent = `🔑 MÃ REDEEM ROLE: ${generatedKey}\n🏷️ ROLE QUY ĐỔI: <@&${targetRoleId}>`;
+                    guideText = `Dùng lệnh \`/redeem ma_key:${generatedKey}\` trên server để nhận Role ngay!`;
+                } else {
+                    deliveryContent = item.reward_data;
+                    guideText = 'Thông tin vật phẩm đã được lưu an toàn vào kho đồ /inventory.';
+                }
+
+                await db.batch([
+                    { sql: "UPDATE global_users SET coin_balance = coin_balance - ? WHERE discord_id = ?", args: [item.price, userId] },
+                    { sql: `INSERT INTO user_inventory (invoice_id, discord_id, item_id, item_name, item_data, reward_type, price) VALUES (?, ?, ?, ?, ?, ?, ?)`, args: [invoiceId, userId, item.item_id, item.item_name, deliveryContent, item.reward_type, item.price] }
+                ], 'write');
+
+                const invoiceEmbed = new EmbedBuilder()
+                    .setTitle('🧾 HÓA ĐƠN ĐỔI QUÀ THÀNH CÔNG')
+                    .setColor('#10B981')
+                    .addFields(
+                        { name: '🔖 Mã Hóa Đơn', value: `\`${invoiceId}\``, inline: true },
+                        { name: '👤 Người Nhận', value: `<@${userId}>`, inline: true },
+                        { name: '📦 Sản Phẩm', value: `**${item.item_name}**`, inline: false },
+                        { name: '💰 Đã Trừ', value: `\`-${item.price.toLocaleString()} Coin\``, inline: true },
+                        { name: '💳 Số Dư Còn', value: `**${newBalance.toLocaleString()} Coin**`, inline: true },
+                        { name: '🎁 Chi Tiết Bàn Giao', value: `\`\`\`text\n${deliveryContent}\n\`\`\``, inline: false },
+                        { name: '💡 Hướng Dẫn', value: guideText, inline: false }
+                    )
+                    .setFooter({ text: 'Xem lại hóa đơn bất kỳ lúc nào qua lệnh /inventory' })
+                    .setTimestamp();
+
+                try {
+                    await interaction.user.send({ embeds: [invoiceEmbed] });
+                } catch (e) {}
+
+                return interaction.editReply({
+                    content: `🎉 **Đổi quà thành công!**\n> Mã hóa đơn: \`${invoiceId}\`\n📬 Chi tiết đã được gửi qua DM (hoặc xem tại \`/inventory\`).`
+                });
+            } catch (err) {
+                console.error('Lỗi Select Menu Shop:', err);
+                return interaction.editReply({ content: '⚠️ Lỗi thanh toán: ' + err.message });
+            }
         }
 
-        // 4. Xử lý Form Modal Submit
+        // 4. XỬ LÝ FORM MODAL SUBMIT
         if (interaction.isModalSubmit()) {
+            console.log(`👉 Gửi form modal: ${interaction.customId}`);
             if (interaction.customId === 'modal_user_quick_redeem') {
                 const rawKeyCode = interaction.fields.getTextInputValue('inp_redeem_key').trim().toUpperCase();
                 const redeemCmd = client.commands.get('redeem');
