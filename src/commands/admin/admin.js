@@ -83,7 +83,7 @@ module.exports = {
             return interaction.editReply({ embeds: [embed], components: [row1, row2] });
 
         } catch (error) {
-            console.error('❌ Lỗi tại /admin:', error);
+            console.error('❌ Lỗi tại /admin :', error);
             return interaction.editReply({ content: '⚠️ Đã xảy ra lỗi khi tải Dashboard Admin!' });
         }
     }
