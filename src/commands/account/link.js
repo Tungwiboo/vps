@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const db = require('../../database');
 
 module.exports = {
@@ -7,7 +7,7 @@ module.exports = {
         .setDescription('Kích hoạt tài khoản ví Discord trên hệ thống toàn cục'),
 
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const userId = interaction.user.id;
         const username = interaction.user.username;
 
@@ -18,7 +18,9 @@ module.exports = {
         const checkUser = checkUserRes.rows[0];
 
         if (checkUser) {
-            return interaction.editReply({ content: `⚠️ Tài khoản Discord <@${userId}> đã được kích hoạt từ trước!` });
+            return interaction.editReply({
+                content: `⚠️ Tài khoản Discord <@${userId}> đã được kích hoạt từ trước!`
+            });
         }
 
         await db.execute({

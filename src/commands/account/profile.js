@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const db = require('../../database');
 
 module.exports = {
@@ -7,7 +7,7 @@ module.exports = {
         .setDescription('Xem hồ sơ cá nhân, số dư Coin và các đặc quyền'),
 
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const userId = interaction.user.id;
 
         const userRes = await db.execute({

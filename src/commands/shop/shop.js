@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, MessageFlags } = require('discord.js');
 const db = require('../../database');
 
 module.exports = {
@@ -7,7 +7,7 @@ module.exports = {
         .setDescription('Cửa hàng quy đổi Coin lấy mã Redeem Role VIP, Role Độc Quyền'),
 
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const userId = interaction.user.id;
 
         const userRes = await db.execute({

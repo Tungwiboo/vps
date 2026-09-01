@@ -10,16 +10,7 @@ webApp.listen(PORT, '0.0.0.0', () => {
     console.log(`🌐 Web Server đang chạy tại cổng: ${PORT}`);
 });
 
-// 2. Làm sạch chuỗi Token (Xóa dấu cách, dấu ngoặc kép thừa nếu có)
-const rawToken = process.env.DISCORD_TOKEN ? process.env.DISCORD_TOKEN.trim().replace(/^["']|["']$/g, '') : '';
-const rawClientId = process.env.CLIENT_ID ? process.env.CLIENT_ID.trim().replace(/^["']|["']$/g, '') : '';
-const rawGuildId = process.env.GUILD_ID ? process.env.GUILD_ID.trim().replace(/^["']|["']$/g, '') : '';
-
-if (!rawToken) {
-    console.error('❌ LỖI: Biến DISCORD_TOKEN trên Render đang bị trống!');
-}
-
-// 3. Khởi tạo Client
+// 2. Khởi tạo Discord Client
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -79,40 +70,34 @@ if (fs.existsSync(eventsPath)) {
     }
 }
 
-// Lắng nghe trạng thái đăng nhập
-client.once('ready', (c) => {
-    console.log(`🚀 [GATEWAY OK] Bot ĐÃ ONLINE THÀNH CÔNG: ${c.user.tag}`);
-});
-
-// Bắt lỗi kết nối Discord
-client.on('error', (err) => {
-    console.error('❌ Lỗi Discord Client:', err.message);
-});
-
-// 4. Đồng bộ Slash Commands
+// 3. Tự động đồng bộ Slash Commands chạy nền
 (async () => {
-    if (!rawClientId || !rawToken) return;
+    const token = (process.env.DISCORD_TOKEN || '').trim().replace(/^["']|["']$/g, '');
+    const clientId = (process.env.CLIENT_ID || '').trim().replace(/^["']|["']$/g, '');
+    const guildId = (process.env.GUILD_ID || '').trim().replace(/^["']|["']$/g, '');
+
+    if (!clientId || !token) return;
     try {
-        const rest = new REST({ timeout: 15000 }).setToken(rawToken);
-        if (rawGuildId) {
+        const rest = new REST({ timeout: 15000 }).setToken(token);
+        if (guildId) {
             await rest.put(
-                Routes.applicationGuildCommands(rawClientId, rawGuildId),
+                Routes.applicationGuildCommands(clientId, guildId),
                 { body: commandsJson }
             );
-            console.log(`✅ Đã đồng bộ ${commandsJson.length} lệnh cho Server Guild ID: ${rawGuildId}`);
+            console.log(`✅ Đã đồng bộ ${commandsJson.length} Slash Commands cho Server Guild ID: ${guildId}`);
         } else {
             await rest.put(
-                Routes.applicationCommands(rawClientId),
+                Routes.applicationCommands(clientId),
                 { body: commandsJson }
             );
-            console.log(`✅ Đã đồng bộ ${commandsJson.length} lệnh toàn cục (Global).`);
+            console.log(`✅ Đã đồng bộ ${commandsJson.length} Slash Commands toàn cục.`);
         }
     } catch (err) {
         console.error('⚠️ Lỗi đồng bộ Slash Commands:', err.message);
     }
 })();
 
-// Chống crash
+// Bắt lỗi sập tiến trình
 process.on('unhandledRejection', (reason) => {
     console.error('⚠️ [Anti-Crash] Unhandled Rejection:', reason);
 });
@@ -121,8 +106,7 @@ process.on('uncaughtException', (err) => {
     console.error('⚠️ [Anti-Crash] Uncaught Exception:', err);
 });
 
-// Đăng nhập bot
-client.login(rawToken).catch(err => {
+const cleanedToken = (process.env.DISCORD_TOKEN || '').trim().replace(/^["']|["']$/g, '');
+client.login(cleanedToken).catch(err => {
     console.error('❌ LỖI ĐĂNG NHẬP DISCORD TOKEN:', err.message);
-    console.error('👉 Hãy vào Developer Portal kiểm tra xem Token có bị Reset không!');
 });

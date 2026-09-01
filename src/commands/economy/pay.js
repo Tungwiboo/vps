@@ -36,7 +36,9 @@ module.exports = {
         }
 
         if (sender.coin_balance < amount) {
-            return interaction.editReply({ content: `❌ Số dư không đủ! Bạn chỉ có **${sender.coin_balance.toLocaleString()}** Coin.` });
+            return interaction.editReply({ 
+                content: `❌ Số dư không đủ! Bạn chỉ có **${sender.coin_balance.toLocaleString()}** Coin.` 
+            });
         }
 
         const receiverRes = await db.execute({
@@ -46,7 +48,9 @@ module.exports = {
         const receiver = receiverRes.rows[0];
 
         if (!receiver) {
-            return interaction.editReply({ content: `❌ Người nhận <@${targetUser.id}> chưa kích hoạt tài khoản ví!` });
+            return interaction.editReply({ 
+                content: `❌ Người nhận <@${targetUser.id}> chưa kích hoạt tài khoản ví (chưa dùng \`/link\`)!` 
+            });
         }
 
         const settingsRes = await db.execute("SELECT setting_value FROM system_settings WHERE setting_key = 'trade_fee_percent'");
@@ -77,7 +81,8 @@ module.exports = {
                 { name: '👤 Người Chuyển', value: `<@${senderId}>`, inline: true },
                 { name: '🎯 Người Nhận', value: `<@${targetUser.id}>`, inline: true },
                 { name: '💰 Số Tiền Gửi', value: `**${amount.toLocaleString()}** Coin`, inline: false },
-                { name: '📥 Thực Nhận', value: `**${netAmount.toLocaleString()}** Coin (Phí: ${feePercent}%)`, inline: true }
+                { name: '📥 Thực Nhận', value: `**${netAmount.toLocaleString()}** Coin`, inline: true },
+                { name: '🏷️ Phí Sàn', value: `\`${fee.toLocaleString()} Coin (${feePercent}%)\``, inline: true }
             )
             .setFooter({ text: 'Giao dịch được ghi nhận vào lịch sử hệ thống' })
             .setTimestamp();

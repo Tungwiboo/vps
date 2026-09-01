@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 const db = require('../../database');
 
 module.exports = {
@@ -11,7 +11,9 @@ module.exports = {
                 .setRequired(true)),
 
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
+        if (!interaction.deferred && !interaction.replied) {
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        }
         const userId = interaction.user.id;
         const keyCode = interaction.options.getString('ma_key').trim().toUpperCase();
 
@@ -43,7 +45,6 @@ module.exports = {
             return interaction.editReply({ content: '🛑 **Từ chối kích hoạt:** Mã Key này thuộc quyền sở hữu của người khác!' });
         }
 
-        // Xử lý Key cấp Role VIP / Độc Quyền
         if (['ROLE_VIP', 'ROLE_EXCLUSIVE', 'ROLE'].includes(keyData.reward_type) || keyData.reward_role_id) {
             if (!interaction.guild) {
                 return interaction.editReply({ content: '⚠️ Bạn phải dùng lệnh `/redeem` bên trong Máy chủ Discord để Bot gán Role trực tiếp!' });
@@ -63,7 +64,7 @@ module.exports = {
                 await member.roles.add(targetRole);
             } catch (err) {
                 return interaction.editReply({ 
-                    content: `⚠️ Bot thiếu quyền để gán Role **${targetRole.name}**! Hãy kiểm tra vị trí Role của Bot trong Server Settings.` 
+                    content: `⚠️ Bot thiếu quyền để gán Role **${targetRole.name}**! Hãy kiểm tra thứ tự Role của Bot.` 
                 });
             }
 
@@ -86,7 +87,6 @@ module.exports = {
             return interaction.editReply({ embeds: [embedRole] });
         }
 
-        // Xử lý Key nhận Coin
         await db.batch([
             {
                 sql: 'UPDATE claim_keys SET is_used = 1 WHERE key_code = ?',

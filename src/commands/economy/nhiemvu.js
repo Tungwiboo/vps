@@ -1,14 +1,7 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 const crypto = require('crypto');
-
-let db, generateShortLink;
-try {
-    db = require('../database');
-    generateShortLink = require('../utils/shortener').generateShortLink;
-} catch (e) {
-    db = require('../../database');
-    generateShortLink = require('../../utils/shortener').generateShortLink;
-}
+const db = require('../../database');
+const { generateShortLink } = require('../../utils/shortener');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -16,7 +9,6 @@ module.exports = {
         .setDescription('Nhận link nhiệm vụ vượt link kiếm Coin hằng ngày'),
 
     async execute(interaction) {
-        // Phản hồi giữ kết nối ngay lập tức với cờ Ephemeral chuẩn
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const userId = interaction.user.id;
 

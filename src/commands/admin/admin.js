@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 const db = require('../../database');
 
 module.exports = {
@@ -13,10 +13,10 @@ module.exports = {
         const hasAdminPerm = interaction.memberPermissions?.has(PermissionFlagsBits.Administrator);
 
         if (!isOwner && !hasAdminPerm) {
-            return interaction.reply({ content: '🚫 Bạn không có quyền truy cập Admin Control Center!', ephemeral: true });
+            return interaction.reply({ content: '🚫 Bạn không có quyền truy cập Admin Control Center!', flags: MessageFlags.Ephemeral });
         }
 
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         try {
             const [userStats, shopStats, keyStats, settingsRes] = await Promise.all([
@@ -41,7 +41,7 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setTitle('⚡ BẢNG ĐIỀU KHIỂN HỆ THỐNG (ADMIN HUB)')
                 .setColor('#6366F1')
-                .setDescription('Trung tâm quản trị toàn diện: Kinh tế, Thành viên, Cửa hàng & Cấu hình.')
+                .setDescription('Trung tâm quản trị: Kinh tế, Thành viên, Cửa hàng & Cấu hình.')
                 .setThumbnail(interaction.guild?.iconURL({ dynamic: true }) || interaction.client.user.displayAvatarURL())
                 .addFields(
                     {
