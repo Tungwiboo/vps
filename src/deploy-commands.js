@@ -48,7 +48,9 @@ const rest = new REST().setToken(process.env.DISCORD_TOKEN);
             );
             console.log('✅ Cập nhật Slash Commands toàn cục (Global) thành công!');
         }
+        process.exit(0); // Bắt buộc phải có để chuyển sang chạy index.js
     } catch (error) {
         console.error('❌ Lỗi khi cập nhật Slash Commands:', error);
+        process.exit(1);
     }
 })();

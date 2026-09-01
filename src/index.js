@@ -13,7 +13,6 @@ const client = new Client({
 
 client.commands = new Collection();
 
-// Quét đệ quy toàn bộ thư mục commands
 function getCommandFiles(dir) {
     let files = [];
     if (!fs.existsSync(dir)) return files;
@@ -37,7 +36,6 @@ for (const filePath of commandFiles) {
     }
 }
 
-// Nạp các sự kiện trong thư mục events
 const eventsPath = path.join(__dirname, 'events');
 if (fs.existsSync(eventsPath)) {
     const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
@@ -57,11 +55,11 @@ webApp.get('/', (req, res) => {
 });
 
 const PORT = process.env.PORT || 7860;
-webApp.listen(PORT, () => {
+// Lắng nghe trên 0.0.0.0 để Render nhận diện Port ngay lập tức
+webApp.listen(PORT, '0.0.0.0', () => {
     console.log(`🌐 Web Server đang chạy tại cổng: ${PORT}`);
 });
 
-// Chống sập tiến trình khi gặp timeout hoặc mất kết nối tạm thời
 process.on('unhandledRejection', (reason) => {
     console.error('⚠️ [Anti-Crash] Unhandled Rejection:', reason);
 });
