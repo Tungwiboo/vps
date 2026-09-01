@@ -19,12 +19,15 @@ module.exports = {
     name: 'interactionCreate',
     async execute(interaction, client) {
 
-        // ========================================================
-        // 1. XỬ LÝ LỆNH SLASH COMMANDS
-        // ========================================================
+        // 1. Xử lý Slash Commands
         if (interaction.isChatInputCommand()) {
+            console.log(`📩 Nhận lệnh: /${interaction.commandName} từ [${interaction.user.tag}]`);
             const command = client.commands.get(interaction.commandName);
-            if (!command) return;
+            
+            if (!command) {
+                console.error(`❌ Không tìm thấy lệnh /${interaction.commandName} trong bộ nhớ!`);
+                return interaction.reply({ content: '❌ Lệnh này hiện chưa được nạp vào bot!', ephemeral: true });
+            }
 
             try {
                 await command.execute(interaction);
@@ -42,9 +45,7 @@ module.exports = {
             return;
         }
 
-        // ========================================================
-        // 2. XỬ LÝ CHỌN MUA ĐỒ SHOP (SELECT MENU TOÀN CỤC)
-        // ========================================================
+        // 2. Select Menu mua hàng Shop
         if (interaction.isStringSelectMenu() && interaction.customId === 'select_shop_checkout') {
             await interaction.deferReply({ ephemeral: true });
             const userId = interaction.user.id;
@@ -87,7 +88,7 @@ module.exports = {
                 });
 
                 deliveryContent = `🔑 MÃ REDEEM ROLE: ${generatedKey}\n🏷️ ROLE QUY ĐỔI: <@&${targetRoleId}>`;
-                guideText = `Dùng lệnh \`/redeem ma_key:${generatedKey}\` trên server để nhận Role ngay! (Mã đã khóa chính chủ ID của bạn).`;
+                guideText = `Dùng lệnh \`/redeem ma_key:${generatedKey}\` trên server để nhận Role ngay!`;
             } else {
                 deliveryContent = item.reward_data;
                 guideText = 'Thông tin vật phẩm đã được lưu an toàn vào kho đồ.';
@@ -122,175 +123,102 @@ module.exports = {
             });
         }
 
-        // ========================================================
-        // 3. XỬ LÝ NÚT BẤM (BUTTONS)
-        // ========================================================
+        // 3. Nút bấm tương tác
         if (interaction.isButton()) {
             const customId = interaction.customId;
 
-            // Nút mở Modal nhập Key nhanh từ /nhiemvu
             if (customId === 'btn_open_redeem_modal') {
-                const modal = new ModalBuilder()
-                    .setCustomId('modal_user_quick_redeem')
-                    .setTitle('🎁 Nhập Mã Key Nhận Quà');
-
-                const keyInput = new TextInputBuilder()
-                    .setCustomId('inp_redeem_key')
-                    .setLabel('Nhập mã Key:')
-                    .setStyle(TextInputStyle.Short)
-                    .setPlaceholder('Ví dụ: KEY-XXXX hoặc ROLE-XXXX')
-                    .setRequired(true);
-
-                modal.addComponents(new ActionRowBuilder().addComponents(keyInput));
+                const modal = new ModalBuilder().setCustomId('modal_user_quick_redeem').setTitle('🎁 Nhập Mã Key Nhận Quà');
+                modal.addComponents(new ActionRowBuilder().addComponents(
+                    new TextInputBuilder().setCustomId('inp_redeem_key').setLabel('Nhập mã Key:').setStyle(TextInputStyle.Short).setPlaceholder('KEY-XXXX hoặc VIP-XXXX').setRequired(true)
+                ));
                 return interaction.showModal(modal);
             }
 
-            // Kiểm tra quyền Admin cho các nút quản trị
             if (customId.startsWith('btn_adm_')) {
                 const allowedAdmins = process.env.ADMIN_ID ? process.env.ADMIN_ID.split(',').map(id => id.trim()) : [];
                 const isOwner = allowedAdmins.includes(interaction.user.id);
                 const hasAdminPerm = interaction.memberPermissions?.has(PermissionFlagsBits.Administrator);
 
                 if (!isOwner && !hasAdminPerm) {
-                    return interaction.reply({ content: '🚫 Bạn không có quyền Administrator để thực hiện!', ephemeral: true });
+                    return interaction.reply({ content: '🚫 Bạn không có quyền Administrator!', ephemeral: true });
                 }
             }
 
-            // Nút 1: Chỉnh Sửa Coin
             if (customId === 'btn_adm_coins') {
-                const modal = new ModalBuilder()
-                    .setCustomId('modal_adm_coins')
-                    .setTitle('💰 Điều Chỉnh Số Dư Coin');
-
+                const modal = new ModalBuilder().setCustomId('modal_adm_coins').setTitle('💰 Điều Chỉnh Số Dư Coin');
                 modal.addComponents(
-                    new ActionRowBuilder().addComponents(
-                        new TextInputBuilder().setCustomId('inp_target').setLabel('Discord ID hoặc @Tag:').setStyle(TextInputStyle.Short).setRequired(true)
-                    ),
-                    new ActionRowBuilder().addComponents(
-                        new TextInputBuilder().setCustomId('inp_action').setLabel('Hành động (ADD hoặc SET):').setStyle(TextInputStyle.Short).setValue('ADD').setRequired(true)
-                    ),
-                    new ActionRowBuilder().addComponents(
-                        new TextInputBuilder().setCustomId('inp_amount').setLabel('Số lượng Coin (nhập -50 để trừ):').setStyle(TextInputStyle.Short).setRequired(true)
-                    )
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_target').setLabel('Discord ID hoặc @Tag:').setStyle(TextInputStyle.Short).setRequired(true)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_action').setLabel('Hành động (ADD hoặc SET):').setStyle(TextInputStyle.Short).setValue('ADD').setRequired(true)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_amount').setLabel('Số Coin (nhập -50 để trừ):').setStyle(TextInputStyle.Short).setRequired(true))
                 );
                 return interaction.showModal(modal);
             }
 
-            // Nút 2: Quản Lý & Tra Cứu Thành Viên
             if (customId === 'btn_adm_member') {
-                const modal = new ModalBuilder()
-                    .setCustomId('modal_adm_member')
-                    .setTitle('👤 Quản Lý Thành Viên');
-
+                const modal = new ModalBuilder().setCustomId('modal_adm_member').setTitle('👤 Quản Lý Thành Viên');
                 modal.addComponents(
-                    new ActionRowBuilder().addComponents(
-                        new TextInputBuilder().setCustomId('inp_target').setLabel('Discord ID hoặc @Tag:').setStyle(TextInputStyle.Short).setRequired(true)
-                    ),
-                    new ActionRowBuilder().addComponents(
-                        new TextInputBuilder().setCustomId('inp_reset_task').setLabel('Reset nhiệm vụ hôm nay? (YES/NO):').setStyle(TextInputStyle.Short).setValue('NO').setRequired(true)
-                    )
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_target').setLabel('Discord ID hoặc @Tag:').setStyle(TextInputStyle.Short).setRequired(true)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_reset_task').setLabel('Reset nhiệm vụ hôm nay? (YES/NO):').setStyle(TextInputStyle.Short).setValue('NO').setRequired(true))
                 );
                 return interaction.showModal(modal);
             }
 
-            // Nút 3: Thêm Vật Phẩm Shop
             if (customId === 'btn_adm_add_shop') {
-                const modal = new ModalBuilder()
-                    .setCustomId('modal_adm_add_shop')
-                    .setTitle('➕ Thêm Vật Phẩm Shop');
-
+                const modal = new ModalBuilder().setCustomId('modal_adm_add_shop').setTitle('➕ Thêm Vật Phẩm Shop');
                 modal.addComponents(
-                    new ActionRowBuilder().addComponents(
-                        new TextInputBuilder().setCustomId('inp_item_id').setLabel('Mã ID (viết liền không dấu):').setStyle(TextInputStyle.Short).setRequired(true)
-                    ),
-                    new ActionRowBuilder().addComponents(
-                        new TextInputBuilder().setCustomId('inp_item_name').setLabel('Tên hiển thị:').setStyle(TextInputStyle.Short).setRequired(true)
-                    ),
-                    new ActionRowBuilder().addComponents(
-                        new TextInputBuilder().setCustomId('inp_price').setLabel('Giá bán (Coin):').setStyle(TextInputStyle.Short).setRequired(true)
-                    ),
-                    new ActionRowBuilder().addComponents(
-                        new TextInputBuilder().setCustomId('inp_type').setLabel('Loại (ROLE_VIP / DM_ACCOUNT):').setStyle(TextInputStyle.Short).setValue('ROLE_VIP').setRequired(true)
-                    ),
-                    new ActionRowBuilder().addComponents(
-                        new TextInputBuilder().setCustomId('inp_data').setLabel('Role ID hoặc Dữ liệu trả về:').setStyle(TextInputStyle.Paragraph).setRequired(true)
-                    )
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_item_id').setLabel('Mã ID (viết liền không dấu):').setStyle(TextInputStyle.Short).setRequired(true)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_item_name').setLabel('Tên hiển thị:').setStyle(TextInputStyle.Short).setRequired(true)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_price').setLabel('Giá bán (Coin):').setStyle(TextInputStyle.Short).setRequired(true)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_type').setLabel('Loại (ROLE_VIP / DM_ACCOUNT):').setStyle(TextInputStyle.Short).setValue('ROLE_VIP').setRequired(true)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_data').setLabel('Role ID hoặc Dữ liệu:').setStyle(TextInputStyle.Paragraph).setRequired(true))
                 );
                 return interaction.showModal(modal);
             }
 
-            // Nút 4: Tạo Mã Key Đổi Thưởng (Role / Coin)
             if (customId === 'btn_adm_create_key') {
-                const modal = new ModalBuilder()
-                    .setCustomId('modal_adm_create_key')
-                    .setTitle('🔑 Tạo Mã Redeem Đổi Thưởng');
-
+                const modal = new ModalBuilder().setCustomId('modal_adm_create_key').setTitle('🔑 Tạo Mã Redeem Đổi Thưởng');
                 modal.addComponents(
-                    new ActionRowBuilder().addComponents(
-                        new TextInputBuilder().setCustomId('inp_key_type').setLabel('Loại thưởng (ROLE hoặc COIN):').setStyle(TextInputStyle.Short).setValue('ROLE').setRequired(true)
-                    ),
-                    new ActionRowBuilder().addComponents(
-                        new TextInputBuilder().setCustomId('inp_key_value').setLabel('Role ID hoặc Số Coin:').setStyle(TextInputStyle.Short).setPlaceholder('Ví dụ: 123456789012345678 hoặc 500').setRequired(true)
-                    ),
-                    new ActionRowBuilder().addComponents(
-                        new TextInputBuilder().setCustomId('inp_lock_user').setLabel('Discord ID nhận (hoặc GLOBAL):').setStyle(TextInputStyle.Short).setValue('GLOBAL').setRequired(true)
-                    )
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_key_type').setLabel('Loại thưởng (ROLE hoặc COIN):').setStyle(TextInputStyle.Short).setValue('ROLE').setRequired(true)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_key_value').setLabel('Role ID hoặc Số Coin:').setStyle(TextInputStyle.Short).setRequired(true)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_lock_user').setLabel('Discord ID nhận (hoặc GLOBAL):').setStyle(TextInputStyle.Short).setValue('GLOBAL').setRequired(true))
                 );
                 return interaction.showModal(modal);
             }
 
-            // Nút 5: Cấu Hình Hệ Thống
             if (customId === 'btn_adm_settings') {
-                const modal = new ModalBuilder()
-                    .setCustomId('modal_adm_settings')
-                    .setTitle('⚙️ Cài Đặt Hệ Thống');
-
+                const modal = new ModalBuilder().setCustomId('modal_adm_settings').setTitle('⚙️ Cài Đặt Hệ Thống');
                 modal.addComponents(
-                    new ActionRowBuilder().addComponents(
-                        new TextInputBuilder().setCustomId('inp_reward').setLabel('Coin thưởng khi vượt link:').setStyle(TextInputStyle.Short).setValue('50').setRequired(true)
-                    ),
-                    new ActionRowBuilder().addComponents(
-                        new TextInputBuilder().setCustomId('inp_limit').setLabel('Giới hạn link vượt/ngày:').setStyle(TextInputStyle.Short).setValue('3').setRequired(true)
-                    ),
-                    new ActionRowBuilder().addComponents(
-                        new TextInputBuilder().setCustomId('inp_fee').setLabel('Phí sàn chuyển tiền (%):').setStyle(TextInputStyle.Short).setValue('5').setRequired(true)
-                    )
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_reward').setLabel('Coin thưởng khi vượt link:').setStyle(TextInputStyle.Short).setValue('50').setRequired(true)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_limit').setLabel('Giới hạn link vượt/ngày:').setStyle(TextInputStyle.Short).setValue('3').setRequired(true)),
+                    new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_fee').setLabel('Phí sàn chuyển tiền (%):').setStyle(TextInputStyle.Short).setValue('5').setRequired(true))
                 );
                 return interaction.showModal(modal);
             }
 
-            // Nút 6: Refresh Dashboard
             if (customId === 'btn_adm_refresh') {
                 const adminCmd = client.commands.get('admin');
                 if (adminCmd) return adminCmd.execute(interaction);
             }
         }
 
-        // ========================================================
-        // 4. XỬ LÝ SUBMIT CÁC FORM MODAL
-        // ========================================================
+        // 4. Xử lý Form Modal Submit
         if (interaction.isModalSubmit()) {
             if (interaction.customId === 'modal_adm_coins') {
                 const targetId = extractUserId(interaction.fields.getTextInputValue('inp_target'));
                 const action = interaction.fields.getTextInputValue('inp_action').trim().toUpperCase();
                 const amount = parseInt(interaction.fields.getTextInputValue('inp_amount').trim());
 
-                if (!targetId) return interaction.reply({ content: '❌ Discord ID người dùng không hợp lệ!', ephemeral: true });
+                if (!targetId) return interaction.reply({ content: '❌ Discord ID không hợp lệ!', ephemeral: true });
                 if (isNaN(amount)) return interaction.reply({ content: '⚠️ Số lượng Coin phải là số nguyên!', ephemeral: true });
 
                 await interaction.deferReply({ ephemeral: true });
 
                 if (action === 'SET') {
-                    await db.execute({
-                        sql: "INSERT INTO global_users (discord_id, username, coin_balance) VALUES (?, 'User', ?) ON CONFLICT(discord_id) DO UPDATE SET coin_balance = ?",
-                        args: [targetId, amount, amount]
-                    });
-                    return interaction.editReply({ content: `✅ Đã thiết lập số dư của <@${targetId}> thành **${amount.toLocaleString()} Coin**.` });
+                    await db.execute({ sql: "INSERT INTO global_users (discord_id, username, coin_balance) VALUES (?, 'User', ?) ON CONFLICT(discord_id) DO UPDATE SET coin_balance = ?", args: [targetId, amount, amount] });
+                    return interaction.editReply({ content: `✅ Đã đặt số dư của <@${targetId}> thành **${amount.toLocaleString()} Coin**.` });
                 } else {
-                    await db.execute({
-                        sql: "INSERT INTO global_users (discord_id, username, coin_balance) VALUES (?, 'User', ?) ON CONFLICT(discord_id) DO UPDATE SET coin_balance = MAX(0, coin_balance + ?)",
-                        args: [targetId, Math.max(0, amount), amount]
-                    });
+                    await db.execute({ sql: "INSERT INTO global_users (discord_id, username, coin_balance) VALUES (?, 'User', ?) ON CONFLICT(discord_id) DO UPDATE SET coin_balance = MAX(0, coin_balance + ?)", args: [targetId, Math.max(0, amount), amount] });
                     return interaction.editReply({ content: `✅ Đã ${amount >= 0 ? 'cộng' : 'trừ'} **${Math.abs(amount).toLocaleString()} Coin** cho <@${targetId}>.` });
                 }
             }
@@ -304,10 +232,7 @@ module.exports = {
 
                 if (resetTask === 'YES') {
                     const today = new Date().toISOString().split('T')[0];
-                    await db.execute({
-                        sql: "UPDATE global_users SET daily_task_count = 0, completed_providers = '', last_task_date = ? WHERE discord_id = ?",
-                        args: [today, targetId]
-                    });
+                    await db.execute({ sql: "UPDATE global_users SET daily_task_count = 0, completed_providers = '', last_task_date = ? WHERE discord_id = ?", args: [today, targetId] });
                 }
 
                 const userRes = await db.execute({ sql: "SELECT * FROM global_users WHERE discord_id = ?", args: [targetId] });
@@ -328,10 +253,7 @@ module.exports = {
                         { name: '🎒 Vật Phẩm Sở Hữu', value: `\`${invRes.rows[0]?.count || 0}\` món`, inline: true }
                     );
 
-                return interaction.editReply({
-                    content: resetTask === 'YES' ? '🔄 Đã reset số lượt nhiệm vụ hôm nay về 0!' : null,
-                    embeds: [embed]
-                });
+                return interaction.editReply({ content: resetTask === 'YES' ? '🔄 Đã reset số lượt nhiệm vụ hôm nay về 0!' : null, embeds: [embed] });
             }
 
             if (interaction.customId === 'modal_adm_add_shop') {
@@ -369,14 +291,14 @@ module.exports = {
                         sql: "INSERT INTO claim_keys (key_code, discord_id, provider, reward_type, reward_role_id, reward_coins, is_used) VALUES (?, ?, 'Admin_Gift', 'ROLE_VIP', ?, 0, 0)",
                         args: [keyCode, lockTarget, rawVal]
                     });
-                    return interaction.editReply({ content: `✅ **Tạo Redeem Code Role thành công!**\n• Mã Key: \`${keyCode}\`\n• Cấp Role: <@&${rawVal}>\n• Người nhận: ${lockTarget === 'GLOBAL' ? '`Tất cả mọi người (Dùng 1 lần)`' : `<@${lockTarget}> (Đã khóa chính chủ)`}` });
+                    return interaction.editReply({ content: `✅ **Tạo Redeem Code Role thành công!**\n• Mã Key: \`${keyCode}\`\n• Cấp Role: <@&${rawVal}>\n• Người nhận: ${lockTarget === 'GLOBAL' ? '`Tất cả mọi người`' : `<@${lockTarget}>`}` });
                 } else {
                     const coins = parseInt(rawVal) || 50;
                     await db.execute({
                         sql: "INSERT INTO claim_keys (key_code, discord_id, provider, reward_type, reward_coins, is_used) VALUES (?, ?, 'Admin_Gift', 'COIN', ?, 0)",
                         args: [keyCode, lockTarget, coins]
                     });
-                    return interaction.editReply({ content: `✅ **Tạo Redeem Code Coin thành công!**\n• Mã Key: \`${keyCode}\`\n• Thưởng: **+${coins.toLocaleString()} Coin**\n• Người nhận: ${lockTarget === 'GLOBAL' ? '`Tất cả mọi người (Dùng 1 lần)`' : `<@${lockTarget}> (Đã khóa chính chủ)`}` });
+                    return interaction.editReply({ content: `✅ **Tạo Redeem Code Coin thành công!**\n• Mã Key: \`${keyCode}\`\n• Thưởng: **+${coins.toLocaleString()} Coin**\n• Người nhận: ${lockTarget === 'GLOBAL' ? '`Tất cả mọi người`' : `<@${lockTarget}>`}` });
                 }
             }
 
