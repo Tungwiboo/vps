@@ -48,6 +48,7 @@ module.exports = {
                 return interaction.editReply({ content: '🛑 **Từ chối:** Mã Key này thuộc quyền sở hữu của người khác!' });
             }
 
+            // Xử lý Role
             if (['ROLE_VIP', 'ROLE_EXCLUSIVE', 'ROLE'].includes(keyData.reward_type) || keyData.reward_role_id) {
                 if (!interaction.guild) {
                     return interaction.editReply({ content: '⚠️ Bạn phải nhập Key trong Server Discord để Bot cấp Role!' });
@@ -81,6 +82,7 @@ module.exports = {
                 return interaction.editReply({ embeds: [embedRole] });
             }
 
+            // Xử lý Coin
             const rewardCoins = parseInt(keyData.reward_coins) || 50;
             await db.batch([
                 {

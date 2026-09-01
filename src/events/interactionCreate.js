@@ -20,7 +20,7 @@ module.exports = {
     async execute(interaction, client) {
 
         // ==========================================
-        // 1. XỬ LÝ NÚT BẤM (MỞ MODAL DƯỚI 0.1 GIÂY)
+        // 1. NÚT BẤM (Mở Modal ngay lập tức dưới 0.1s)
         // ==========================================
         if (interaction.isButton()) {
             if (interaction.customId === 'btn_open_redeem_modal') {
@@ -30,21 +30,18 @@ module.exports = {
 
                 const keyInput = new TextInputBuilder()
                     .setCustomId('inp_redeem_key')
-                    .setLabel('Nhập mã Key nhận được từ Web:')
+                    .setLabel('Nhập chính xác mã Key từ Web:')
                     .setStyle(TextInputStyle.Short)
                     .setPlaceholder('Ví dụ: KEY-LINK4M-XXXX')
-                    .setRequired(true)
-                    .setMaxLength(100);
+                    .setRequired(true);
 
-                const row = new ActionRowBuilder().addComponents(keyInput);
-                modal.addComponents(row);
-
+                modal.addComponents(new ActionRowBuilder().addComponents(keyInput));
                 return await interaction.showModal(modal).catch(err => {
                     console.error('❌ Lỗi showModal:', err);
                 });
             }
 
-            // Nút Admin Hub
+            // Nút bấm Admin Hub
             if (interaction.customId.startsWith('btn_adm_')) {
                 const allowedAdmins = process.env.ADMIN_ID ? process.env.ADMIN_ID.split(',').map(id => id.trim()) : [];
                 const isOwner = allowedAdmins.includes(interaction.user.id);
@@ -59,7 +56,7 @@ module.exports = {
                     modal.addComponents(
                         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_target').setLabel('Discord ID hoặc @Tag:').setStyle(TextInputStyle.Short).setRequired(true)),
                         new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_action').setLabel('Hành động (ADD hoặc SET):').setStyle(TextInputStyle.Short).setValue('ADD').setRequired(true)),
-                        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_amount').setLabel('Số Coin (nhập -50 để trừ):').setStyle(TextInputStyle.Short).setRequired(true))
+                        new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('inp_amount').setLabel('Số Coin:').setStyle(TextInputStyle.Short).setRequired(true))
                     );
                     return await interaction.showModal(modal);
                 }
@@ -114,7 +111,7 @@ module.exports = {
         }
 
         // ==========================================
-        // 2. XỬ LÝ GỬI FORM MODAL SUBMIT (NHẬN KEY)
+        // 2. FORM MODAL SUBMIT (Nhập Key & Cộng thưởng)
         // ==========================================
         if (interaction.isModalSubmit()) {
             if (interaction.customId === 'modal_user_quick_redeem') {
@@ -155,6 +152,7 @@ module.exports = {
                         return interaction.editReply({ content: '🛑 **Từ chối:** Mã Key này thuộc quyền sở hữu của người khác!' });
                     }
 
+                    // Trao Role
                     if (['ROLE_VIP', 'ROLE_EXCLUSIVE', 'ROLE'].includes(keyData.reward_type) || keyData.reward_role_id) {
                         if (!interaction.guild) {
                             return interaction.editReply({ content: '⚠️ Bạn phải nhập Key trong Server Discord để Bot cấp Role!' });
@@ -188,6 +186,7 @@ module.exports = {
                         return interaction.editReply({ embeds: [embedRole] });
                     }
 
+                    // Trao Coin
                     const rewardCoins = parseInt(keyData.reward_coins) || 50;
                     await db.batch([
                         {
@@ -220,6 +219,7 @@ module.exports = {
                 }
             }
 
+            // Modal Admin
             if (interaction.customId === 'modal_adm_coins') {
                 const targetId = extractUserId(interaction.fields.getTextInputValue('inp_target'));
                 const action = interaction.fields.getTextInputValue('inp_action').trim().toUpperCase();
@@ -311,7 +311,7 @@ module.exports = {
         }
 
         // ==========================================
-        // 3. XỬ LÝ SLASH COMMANDS (/profile, /nhiemvu,...)
+        // 3. SLASH COMMANDS
         // ==========================================
         if (interaction.isChatInputCommand()) {
             const command = client.commands.get(interaction.commandName);
@@ -332,7 +332,7 @@ module.exports = {
         }
 
         // ==========================================
-        // 4. XỬ LÝ SELECT MENU SHOP
+        // 4. SELECT MENU SHOP
         // ==========================================
         if (interaction.isStringSelectMenu() && interaction.customId === 'select_shop_checkout') {
             await interaction.deferReply({ ephemeral: true });

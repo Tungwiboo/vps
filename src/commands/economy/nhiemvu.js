@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const crypto = require('crypto');
 const db = require('../../database');
 const { generateShortLink } = require('../../utils/shortener');
@@ -9,10 +9,12 @@ module.exports = {
         .setDescription('Nhận link nhiệm vụ vượt link kiếm Coin hằng ngày'),
 
     async execute(interaction) {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        // Hoãn phản hồi ngay dòng đầu tiên để tránh lỗi timeout 3s của Discord
+        await interaction.deferReply({ ephemeral: true });
         const userId = interaction.user.id;
 
         try {
+            // 1. Kiểm tra tài khoản
             const userRes = await db.execute({
                 sql: 'SELECT * FROM global_users WHERE discord_id = ?',
                 args: [userId]
@@ -20,9 +22,10 @@ module.exports = {
             let user = userRes.rows[0];
 
             if (!user) {
-                return interaction.editReply({ content: '⚠️ Bạn chưa liên kết tài khoản! Hãy dùng `/link` trước.' });
+                return interaction.editReply({ content: '⚠️ Bạn chưa kích hoạt tài khoản! Hãy dùng lệnh `/link` trước.' });
             }
 
+            // 2. Lấy cấu hình hệ thống
             const settingsRes = await db.execute("SELECT * FROM system_settings");
             const settings = {};
             settingsRes.rows.forEach(r => settings[r.setting_key] = r.setting_value);
@@ -30,6 +33,7 @@ module.exports = {
             const dailyLimit = parseInt(settings.daily_task_limit) || 3;
             const rewardCoins = parseInt(settings.task_reward_coins) || 50;
 
+            // 3. Reset nhiệm vụ ngày mới
             const today = new Date().toISOString().split('T')[0];
             if (user.last_task_date !== today) {
                 await db.execute({
@@ -48,6 +52,7 @@ module.exports = {
                 });
             }
 
+            // 4. Tạo Token phiên nhiệm vụ
             const token = crypto.randomBytes(16).toString('hex');
             const now = Date.now();
             const expiresAt = now + (10 * 60 * 1000);
@@ -55,21 +60,24 @@ module.exports = {
             const baseUrl = process.env.BASE_URL || 'https://key.nbtung.id.vn';
             const rawDestinationUrl = `${baseUrl}/verify.html?token=${token}`;
 
+            // 5. Tạo link rút gọn
             const result = await generateShortLink(rawDestinationUrl, completedList);
 
             if (!result) {
                 return interaction.editReply({
-                    content: '⚠️ **Hệ thống rút gọn link đang bảo trì hoặc hết cổng khả dụng!**\nVui lòng thử lại sau ít phút.'
+                    content: '⚠️ **Hệ thống rút gọn link đang bận hoặc hết cổng khả dụng!**\nVui lòng thử lại sau 1 phút.'
                 });
             }
 
             const { provider, shortUrl } = result;
 
+            // 6. Lưu vào DB
             await db.execute({
                 sql: `INSERT INTO link_sessions (token, discord_id, provider, status, created_at, expires_at) VALUES (?, ?, ?, 'PENDING', ?, ?)`,
                 args: [token, userId, provider, now, expiresAt]
             });
 
+            // 7. Gửi bảng nhiệm vụ
             const embed = new EmbedBuilder()
                 .setTitle('🎯 NHIỆM VỤ VƯỢT LINK KIẾM COIN')
                 .setColor('#F59E0B')
@@ -96,8 +104,8 @@ module.exports = {
             return interaction.editReply({ embeds: [embed], components: [row] });
 
         } catch (err) {
-            console.error('❌ Lỗi thực thi /nhiemvu:', err);
-            return interaction.editReply({ content: '⚠️ Đã xảy ra sự cố khi tạo nhiệm vụ, vui lòng thử lại!' });
+            console.error('❌ Lỗi chi tiết lệnh /nhiemvu:', err);
+            return interaction.editReply({ content: `⚠️ Lỗi: \`${err.message}\`` });
         }
     }
 };
