@@ -10,7 +10,16 @@ webApp.listen(PORT, '0.0.0.0', () => {
     console.log(`🌐 Web Server đang chạy tại cổng: ${PORT}`);
 });
 
-// 2. Khởi tạo Discord Client
+// 2. Làm sạch chuỗi Token (Xóa dấu cách, dấu ngoặc kép thừa nếu có)
+const rawToken = process.env.DISCORD_TOKEN ? process.env.DISCORD_TOKEN.trim().replace(/^["']|["']$/g, '') : '';
+const rawClientId = process.env.CLIENT_ID ? process.env.CLIENT_ID.trim().replace(/^["']|["']$/g, '') : '';
+const rawGuildId = process.env.GUILD_ID ? process.env.GUILD_ID.trim().replace(/^["']|["']$/g, '') : '';
+
+if (!rawToken) {
+    console.error('❌ LỖI: Biến DISCORD_TOKEN trên Render đang bị trống!');
+}
+
+// 3. Khởi tạo Client
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -21,6 +30,7 @@ const client = new Client({
 client.commands = new Collection();
 const commandsJson = [];
 
+// Quét đệ quy toàn bộ thư mục commands
 function getCommandFiles(dir) {
     let files = [];
     if (!fs.existsSync(dir)) return files;
@@ -38,65 +48,71 @@ function getCommandFiles(dir) {
 
 const commandFiles = getCommandFiles(path.join(__dirname, 'commands'));
 for (const filePath of commandFiles) {
-    const command = require(filePath);
-    if ('data' in command && 'execute' in command) {
-        client.commands.set(command.data.name, command);
-        commandsJson.push(command.data.toJSON());
+    try {
+        const command = require(filePath);
+        if ('data' in command && 'execute' in command) {
+            client.commands.set(command.data.name, command);
+            commandsJson.push(command.data.toJSON());
+        }
+    } catch (err) {
+        console.error(`⚠️ Lỗi khi nạp file ${filePath}:`, err.message);
     }
 }
-console.log(`📦 Đã nạp ${client.commands.size} lệnh vào bộ nhớ Bot.`);
+console.log(`📦 Đã nạp thành công ${client.commands.size} lệnh.`);
 
 // Nạp Events
 const eventsPath = path.join(__dirname, 'events');
 if (fs.existsSync(eventsPath)) {
     const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
     for (const file of eventFiles) {
-        const filePath = path.join(eventsPath, file);
-        const event = require(filePath);
-        if (event.once) {
-            client.once(event.name, (...args) => event.execute(...args, client));
-        } else {
-            client.on(event.name, (...args) => event.execute(...args, client));
+        try {
+            const filePath = path.join(eventsPath, file);
+            const event = require(filePath);
+            if (event.once) {
+                client.once(event.name, (...args) => event.execute(...args, client));
+            } else {
+                client.on(event.name, (...args) => event.execute(...args, client));
+            }
+        } catch (err) {
+            console.error(`⚠️ Lỗi nạp event ${file}:`, err.message);
         }
     }
 }
 
-// Bắt sự kiện Gateway Discord
+// Lắng nghe trạng thái đăng nhập
 client.once('ready', (c) => {
-    console.log(`🚀 [GATEWAY OK] Bot đã kết nối hoàn tất: ${c.user.tag}`);
+    console.log(`🚀 [GATEWAY OK] Bot ĐÃ ONLINE THÀNH CÔNG: ${c.user.tag}`);
 });
 
-client.on('shardReady', (shardId) => {
-    console.log(`⚡ Shard #${shardId} đã sẵn sàng nhận tương tác từ Discord.`);
-});
-
+// Bắt lỗi kết nối Discord
 client.on('error', (err) => {
     console.error('❌ Lỗi Discord Client:', err.message);
 });
 
-// 3. Tự động đồng bộ Slash Commands
+// 4. Đồng bộ Slash Commands
 (async () => {
-    if (!process.env.CLIENT_ID || !process.env.DISCORD_TOKEN) return;
+    if (!rawClientId || !rawToken) return;
     try {
-        const rest = new REST({ timeout: 15000 }).setToken(process.env.DISCORD_TOKEN);
-        if (process.env.GUILD_ID) {
+        const rest = new REST({ timeout: 15000 }).setToken(rawToken);
+        if (rawGuildId) {
             await rest.put(
-                Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
+                Routes.applicationGuildCommands(rawClientId, rawGuildId),
                 { body: commandsJson }
             );
+            console.log(`✅ Đã đồng bộ ${commandsJson.length} lệnh cho Server Guild ID: ${rawGuildId}`);
         } else {
             await rest.put(
-                Routes.applicationCommands(process.env.CLIENT_ID),
+                Routes.applicationCommands(rawClientId),
                 { body: commandsJson }
             );
+            console.log(`✅ Đã đồng bộ ${commandsJson.length} lệnh toàn cục (Global).`);
         }
-        console.log(`✅ Đã đồng bộ ${commandsJson.length} Slash Commands lên Discord.`);
     } catch (err) {
         console.error('⚠️ Lỗi đồng bộ Slash Commands:', err.message);
     }
 })();
 
-// Bắt lỗi tiến trình Node.js
+// Chống crash
 process.on('unhandledRejection', (reason) => {
     console.error('⚠️ [Anti-Crash] Unhandled Rejection:', reason);
 });
@@ -105,7 +121,8 @@ process.on('uncaughtException', (err) => {
     console.error('⚠️ [Anti-Crash] Uncaught Exception:', err);
 });
 
-// Đăng nhập Token
-client.login(process.env.DISCORD_TOKEN).catch(err => {
-    console.error('❌ Lỗi xác thực Discord Token:', err.message);
+// Đăng nhập bot
+client.login(rawToken).catch(err => {
+    console.error('❌ LỖI ĐĂNG NHẬP DISCORD TOKEN:', err.message);
+    console.error('👉 Hãy vào Developer Portal kiểm tra xem Token có bị Reset không!');
 });
