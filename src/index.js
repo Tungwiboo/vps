@@ -4,7 +4,7 @@ const path = require('path');
 const { Client, GatewayIntentBits, Collection, REST, Routes } = require('discord.js');
 const webApp = require('./server');
 
-// 1. Mở Port Web Server ngay lập tức cho Render
+// 1. Mở Port Web Server cho Render ngay lập tức
 const PORT = process.env.PORT || 10000;
 webApp.listen(PORT, '0.0.0.0', () => {
     console.log(`🌐 Web Server đang chạy tại cổng: ${PORT}`);
@@ -21,7 +21,6 @@ const client = new Client({
 client.commands = new Collection();
 const commandsJson = [];
 
-// Quét toàn bộ thư mục commands
 function getCommandFiles(dir) {
     let files = [];
     if (!fs.existsSync(dir)) return files;
@@ -47,7 +46,7 @@ for (const filePath of commandFiles) {
 }
 console.log(`📦 Đã nạp ${client.commands.size} lệnh vào bộ nhớ Bot.`);
 
-// Nạp các file sự kiện trong events
+// Nạp Events
 const eventsPath = path.join(__dirname, 'events');
 if (fs.existsSync(eventsPath)) {
     const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
@@ -62,12 +61,20 @@ if (fs.existsSync(eventsPath)) {
     }
 }
 
-// Báo trạng thái Bot Online
-client.once('ready', () => {
-    console.log(`🤖 Discord Bot ĐÃ SẴN SÀNG NHẬN LỆNH: ${client.user.tag}`);
+// Bắt sự kiện Gateway Discord
+client.once('ready', (c) => {
+    console.log(`🚀 [GATEWAY OK] Bot đã kết nối hoàn tất: ${c.user.tag}`);
 });
 
-// 3. Tự động đồng bộ Slash Commands chạy nền
+client.on('shardReady', (shardId) => {
+    console.log(`⚡ Shard #${shardId} đã sẵn sàng nhận tương tác từ Discord.`);
+});
+
+client.on('error', (err) => {
+    console.error('❌ Lỗi Discord Client:', err.message);
+});
+
+// 3. Tự động đồng bộ Slash Commands
 (async () => {
     if (!process.env.CLIENT_ID || !process.env.DISCORD_TOKEN) return;
     try {
@@ -83,13 +90,13 @@ client.once('ready', () => {
                 { body: commandsJson }
             );
         }
-        console.log(`✅ Đã đồng bộ ${commandsJson.length} lệnh Slash Commands lên Discord!`);
+        console.log(`✅ Đã đồng bộ ${commandsJson.length} Slash Commands lên Discord.`);
     } catch (err) {
         console.error('⚠️ Lỗi đồng bộ Slash Commands:', err.message);
     }
 })();
 
-// Bắt lỗi sập tiến trình
+// Bắt lỗi tiến trình Node.js
 process.on('unhandledRejection', (reason) => {
     console.error('⚠️ [Anti-Crash] Unhandled Rejection:', reason);
 });
@@ -98,6 +105,7 @@ process.on('uncaughtException', (err) => {
     console.error('⚠️ [Anti-Crash] Uncaught Exception:', err);
 });
 
+// Đăng nhập Token
 client.login(process.env.DISCORD_TOKEN).catch(err => {
-    console.error('❌ Lỗi đăng nhập Discord Token:', err.message);
+    console.error('❌ Lỗi xác thực Discord Token:', err.message);
 });
