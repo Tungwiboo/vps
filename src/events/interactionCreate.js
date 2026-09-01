@@ -7,7 +7,7 @@ const {
     PermissionFlagsBits 
 } = require('discord.js');
 const crypto = require('crypto');
-const db = require('../database');
+const db = require('../../database');
 
 function extractUserId(input) {
     if (!input) return null;
