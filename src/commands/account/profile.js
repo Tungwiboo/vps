@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const db = require('../../database');
+const db = require('../database');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -7,7 +7,9 @@ module.exports = {
         .setDescription('Xem hồ sơ cá nhân, số dư Coin và các đặc quyền'),
 
     async execute(interaction) {
+        await interaction.deferReply({ ephemeral: true });
         const userId = interaction.user.id;
+
         const userRes = await db.execute({
             sql: 'SELECT * FROM global_users WHERE discord_id = ?',
             args: [userId]
@@ -15,10 +17,7 @@ module.exports = {
         let user = userRes.rows[0];
 
         if (!user) {
-            return interaction.reply({
-                content: '⚠️ Bạn chưa kích hoạt tài khoản! Hãy dùng `/link` trước.',
-                ephemeral: true
-            });
+            return interaction.editReply({ content: '⚠️ Bạn chưa kích hoạt tài khoản! Hãy dùng `/link` trước.' });
         }
 
         const today = new Date().toISOString().split('T')[0];
@@ -48,9 +47,9 @@ module.exports = {
                 { name: '🎒 Vật Phẩm Sở Hữu', value: `\`${invRes.rows[0]?.count || 0}\` món`, inline: true },
                 { name: '📅 Ngày Tham Gia', value: `\`${new Date(user.created_at).toLocaleDateString('vi-VN')}\``, inline: true }
             )
-            .setFooter({ text: 'Dữ liệu tài khoản đồng bộ trên hệ thống đám mây Turso' })
+            .setFooter({ text: 'Dữ liệu được cập nhật theo thời gian thực' })
             .setTimestamp();
 
-        return interaction.reply({ embeds: [embed] });
+        return interaction.editReply({ embeds: [embed] });
     }
 };

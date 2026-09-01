@@ -55,7 +55,9 @@ async function shortenLink4m(destinationUrl) {
     if (!resText) throw new Error('Phản hồi trống từ Link4M');
 
     let json;
-    try { json = JSON.parse(resText); } catch (e) {
+    try { 
+        json = JSON.parse(resText); 
+    } catch (e) {
         throw new Error(`Phản hồi không phải JSON: ${resText.slice(0, 80)}`);
     }
 
@@ -76,7 +78,9 @@ async function shortenYeuMoney(destinationUrl) {
     if (!resText) throw new Error('Phản hồi trống từ YeuMoney');
 
     let json;
-    try { json = JSON.parse(resText); } catch (e) {
+    try { 
+        json = JSON.parse(resText); 
+    } catch (e) {
         throw new Error(`Phản hồi không phải JSON: ${resText.slice(0, 80)}`);
     }
 
@@ -96,7 +100,9 @@ async function shortenAnonLink(destinationUrl) {
     if (!resText) throw new Error('Phản hồi trống từ AnonLink');
 
     let json;
-    try { json = JSON.parse(resText); } catch (e) {
+    try { 
+        json = JSON.parse(resText); 
+    } catch (e) {
         throw new Error(`Phản hồi không phải JSON: ${resText.slice(0, 80)}`);
     }
 
@@ -107,7 +113,7 @@ async function shortenAnonLink(destinationUrl) {
     throw new Error(errMsg);
 }
 
-// Hàm phân phối rút gọn link
+// Phân phối và xoay vòng link
 async function generateShortLink(destinationUrl, excludedProviders = []) {
     const allProviders = [
         { name: 'Link4M', fn: shortenLink4m },
@@ -134,10 +140,8 @@ async function generateShortLink(destinationUrl, excludedProviders = []) {
         }
     }
 
-    return {
-        provider: 'Direct',
-        shortUrl: destinationUrl
-    };
+    // Trả về null nếu toàn bộ các cổng đều lỗi (tuyệt đối không trả về link Direct)
+    return null;
 }
 
 module.exports = { generateShortLink };

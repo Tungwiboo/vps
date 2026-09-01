@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const db = require('../../database');
+const db = require('../database');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -7,6 +7,7 @@ module.exports = {
         .setDescription('Xem kho đồ, các mã Key đã mua và lịch sử hóa đơn'),
 
     async execute(interaction) {
+        await interaction.deferReply({ ephemeral: true });
         const userId = interaction.user.id;
 
         const itemsRes = await db.execute({
@@ -16,10 +17,7 @@ module.exports = {
         const items = itemsRes.rows;
 
         if (items.length === 0) {
-            return interaction.reply({
-                content: '🎒 Túi đồ của bạn đang trống! Hãy ghé `/shop` để mua sắm nhé.',
-                ephemeral: true
-            });
+            return interaction.editReply({ content: '🎒 Túi đồ của bạn đang trống! Hãy ghé `/shop` để mua sắm nhé.' });
         }
 
         const embed = new EmbedBuilder()
@@ -38,6 +36,6 @@ module.exports = {
 
         embed.setFooter({ text: 'Bảo mật các mã Key cẩn thận, không chia sẻ cho người khác' });
 
-        return interaction.reply({ embeds: [embed], ephemeral: true });
+        return interaction.editReply({ embeds: [embed] });
     }
 };

@@ -11,12 +11,10 @@ module.exports = {
                 .setRequired(true)),
 
     async execute(interaction) {
+        await interaction.deferReply({ ephemeral: true });
         const userId = interaction.user.id;
         const keyCode = interaction.options.getString('ma_key').trim().toUpperCase();
 
-        await interaction.deferReply({ ephemeral: true });
-
-        // 1. Kiểm tra tài khoản đã /link chưa
         const userRes = await db.execute({
             sql: 'SELECT * FROM global_users WHERE discord_id = ?',
             args: [userId]
@@ -27,7 +25,6 @@ module.exports = {
             return interaction.editReply({ content: '⚠️ Bạn chưa liên kết tài khoản ví! Hãy dùng lệnh `/link` trước.' });
         }
 
-        // 2. Tra cứu mã Key trong cơ sở dữ liệu
         const keyRes = await db.execute({
             sql: 'SELECT * FROM claim_keys WHERE key_code = ?',
             args: [keyCode]
@@ -38,19 +35,15 @@ module.exports = {
             return interaction.editReply({ content: '❌ Mã Key không tồn tại hoặc đã bị nhập sai!' });
         }
 
-        // 3. Kiểm tra mã chỉ dùng 1 lần
         if (keyData.is_used === 1) {
             return interaction.editReply({ content: '⚠️ Mã Key này **đã được sử dụng trước đó** rồi!' });
         }
 
-        // 4. Kiểm tra quyền sở hữu (Chỉ người mua/nhận mới được dùng)
         if (keyData.discord_id !== 'GLOBAL' && keyData.discord_id !== userId) {
-            return interaction.editReply({ content: '🛑 **Từ chối kích hoạt:** Mã Key này đã được khóa theo tài khoản của người khác!' });
+            return interaction.editReply({ content: '🛑 **Từ chối kích hoạt:** Mã Key này thuộc quyền sở hữu của người khác!' });
         }
 
-        // ========================================================
-        // TRƯỜNG HỢP A: KEY CẤP ROLE (ROLE VIP / ROLE ĐỘC QUYỀN)
-        // ========================================================
+        // Xử lý Key cấp Role VIP / Độc Quyền
         if (['ROLE_VIP', 'ROLE_EXCLUSIVE', 'ROLE'].includes(keyData.reward_type) || keyData.reward_role_id) {
             if (!interaction.guild) {
                 return interaction.editReply({ content: '⚠️ Bạn phải dùng lệnh `/redeem` bên trong Máy chủ Discord để Bot gán Role trực tiếp!' });
@@ -61,7 +54,7 @@ module.exports = {
 
             if (!targetRole) {
                 return interaction.editReply({ 
-                    content: `⚠️ Không tìm thấy Role có ID \`${roleId}\` trên máy chủ này! Vui lòng liên hệ Quản trị viên.` 
+                    content: `⚠️ Không tìm thấy Role có ID \`${roleId}\` trên máy chủ này! Vui lòng liên hệ Admin.` 
                 });
             }
 
@@ -69,13 +62,11 @@ module.exports = {
                 const member = await interaction.guild.members.fetch(userId);
                 await member.roles.add(targetRole);
             } catch (err) {
-                console.error('Lỗi gán role:', err);
                 return interaction.editReply({ 
-                    content: `⚠️ Bot thiếu quyền để gán Role **${targetRole.name}**! Hãy đảm bảo thứ tự Role của Bot nằm trên Role này trong cài đặt Server.` 
+                    content: `⚠️ Bot thiếu quyền để gán Role **${targetRole.name}**! Hãy kiểm tra vị trí Role của Bot trong Server Settings.` 
                 });
             }
 
-            // Đánh dấu Key đã sử dụng
             await db.execute({
                 sql: 'UPDATE claim_keys SET is_used = 1 WHERE key_code = ?',
                 args: [keyCode]
@@ -84,20 +75,18 @@ module.exports = {
             const embedRole = new EmbedBuilder()
                 .setTitle('👑 KÍCH HOẠT ROLE ĐẶC QUYỀN THÀNH CÔNG!')
                 .setColor('#F59E0B')
-                .setDescription(`Chúc mừng bạn đã kích hoạt thành công gói quyền lợi Role!\n\n🏷️ **Role đã nhận:** <@&${roleId}>\n🔑 **Mã Key:** \`${keyCode}\``)
+                .setDescription(`Chúc mừng bạn đã nhận quyền lợi Role!\n\n🏷️ **Role đã nhận:** <@&${roleId}>\n🔑 **Mã Key:** \`${keyCode}\``)
                 .addFields(
                     { name: '👤 Người Nhận', value: `<@${userId}>`, inline: true },
                     { name: '📅 Thời Gian', value: `\`${new Date().toLocaleString('vi-VN')}\``, inline: true }
                 )
-                .setFooter({ text: 'Mã Key đã được đánh dấu sử dụng và vô hiệu hóa vĩnh viễn' })
+                .setFooter({ text: 'Mã Key đã được vô hiệu hóa sau khi kích hoạt' })
                 .setTimestamp();
 
             return interaction.editReply({ embeds: [embedRole] });
         }
 
-        // ========================================================
-        // TRƯỜNG HỢP B: KEY NHẬN COIN THƯỜNG / VƯỢT LINK
-        // ========================================================
+        // Xử lý Key nhận Coin
         await db.batch([
             {
                 sql: 'UPDATE claim_keys SET is_used = 1 WHERE key_code = ?',

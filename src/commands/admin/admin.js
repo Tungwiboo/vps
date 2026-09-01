@@ -8,7 +8,6 @@ module.exports = {
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
-        // Kiểm tra quyền Admin
         const allowedAdmins = process.env.ADMIN_ID ? process.env.ADMIN_ID.split(',').map(id => id.trim()) : [];
         const isOwner = allowedAdmins.includes(interaction.user.id);
         const hasAdminPerm = interaction.memberPermissions?.has(PermissionFlagsBits.Administrator);
@@ -20,7 +19,6 @@ module.exports = {
         await interaction.deferReply({ ephemeral: true });
 
         try {
-            // Lấy dữ liệu thống kê từ Turso
             const [userStats, shopStats, keyStats, settingsRes] = await Promise.all([
                 db.execute("SELECT COUNT(*) as total_users, SUM(coin_balance) as total_coins, SUM(total_links_completed) as total_links, SUM(daily_task_count) as tasks_today FROM global_users"),
                 db.execute("SELECT COUNT(*) as total_items FROM shop_items WHERE is_active = 1"),
@@ -71,33 +69,15 @@ module.exports = {
                 .setTimestamp();
 
             const row1 = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId('btn_adm_coins')
-                    .setLabel('💰 Chỉnh Sửa Coin')
-                    .setStyle(ButtonStyle.Primary),
-                new ButtonBuilder()
-                    .setCustomId('btn_adm_member')
-                    .setLabel('👤 Quản Lý Thành Viên')
-                    .setStyle(ButtonStyle.Secondary),
-                new ButtonBuilder()
-                    .setCustomId('btn_adm_add_shop')
-                    .setLabel('➕ Thêm Đồ Shop')
-                    .setStyle(ButtonStyle.Success)
+                new ButtonBuilder().setCustomId('btn_adm_coins').setLabel('💰 Chỉnh Sửa Coin').setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId('btn_adm_member').setLabel('👤 Quản Lý Thành Viên').setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder().setCustomId('btn_adm_add_shop').setLabel('➕ Thêm Đồ Shop').setStyle(ButtonStyle.Success)
             );
 
             const row2 = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId('btn_adm_create_key')
-                    .setLabel('🔑 Tạo Mã Key')
-                    .setStyle(ButtonStyle.Secondary),
-                new ButtonBuilder()
-                    .setCustomId('btn_adm_settings')
-                    .setLabel('⚙️ Đổi Cấu Hình')
-                    .setStyle(ButtonStyle.Secondary),
-                new ButtonBuilder()
-                    .setCustomId('btn_adm_refresh')
-                    .setLabel('🔄 Làm Mới')
-                    .setStyle(ButtonStyle.Secondary)
+                new ButtonBuilder().setCustomId('btn_adm_create_key').setLabel('🔑 Tạo Mã Key').setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder().setCustomId('btn_adm_settings').setLabel('⚙️ Đổi Cấu Hình').setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder().setCustomId('btn_adm_refresh').setLabel('🔄 Làm Mới').setStyle(ButtonStyle.Secondary)
             );
 
             return interaction.editReply({ embeds: [embed], components: [row1, row2] });

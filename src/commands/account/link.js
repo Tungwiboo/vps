@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const db = require('../../database');
+const db = require('../database');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -7,6 +7,7 @@ module.exports = {
         .setDescription('Kích hoạt tài khoản ví Discord trên hệ thống toàn cục'),
 
     async execute(interaction) {
+        await interaction.deferReply({ ephemeral: true });
         const userId = interaction.user.id;
         const username = interaction.user.username;
 
@@ -17,10 +18,7 @@ module.exports = {
         const checkUser = checkUserRes.rows[0];
 
         if (checkUser) {
-            return interaction.reply({
-                content: `⚠️ Tài khoản Discord <@${userId}> đã được kích hoạt từ trước!`,
-                ephemeral: true
-            });
+            return interaction.editReply({ content: `⚠️ Tài khoản Discord <@${userId}> đã được kích hoạt từ trước!` });
         }
 
         await db.execute({
@@ -40,6 +38,6 @@ module.exports = {
             .setFooter({ text: 'Dùng /nhiemvu để bắt đầu kiếm Coin' })
             .setTimestamp();
 
-        return interaction.reply({ embeds: [embed] });
+        return interaction.editReply({ embeds: [embed] });
     }
 };

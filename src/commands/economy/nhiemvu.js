@@ -9,6 +9,7 @@ module.exports = {
         .setDescription('Nhận link nhiệm vụ vượt link kiếm Coin hằng ngày'),
 
     async execute(interaction) {
+        await interaction.deferReply({ ephemeral: true });
         const userId = interaction.user.id;
 
         const userRes = await db.execute({
@@ -18,7 +19,7 @@ module.exports = {
         let user = userRes.rows[0];
 
         if (!user) {
-            return interaction.reply({ content: '⚠️ Bạn chưa liên kết tài khoản! Hãy dùng `/link` trước.', ephemeral: true });
+            return interaction.editReply({ content: '⚠️ Bạn chưa liên kết tài khoản! Hãy dùng `/link` trước.' });
         }
 
         const settingsRes = await db.execute("SELECT * FROM system_settings");
@@ -41,26 +42,23 @@ module.exports = {
         const completedList = (user.completed_providers || '').split(',').filter(Boolean);
 
         if (user.daily_task_count >= dailyLimit || completedList.length >= dailyLimit) {
-            return interaction.reply({
-                content: `🛑 Bạn đã hoàn thành toàn bộ **${dailyLimit}/${dailyLimit} lượt hôm nay**! Hãy quay lại vào ngày mai.`,
-                ephemeral: true
+            return interaction.editReply({
+                content: `🛑 Bạn đã hoàn thành toàn bộ **${dailyLimit}/${dailyLimit} lượt hôm nay**! Hãy quay lại vào ngày mai.`
             });
         }
-
-        await interaction.deferReply({ ephemeral: true });
 
         const token = crypto.randomBytes(16).toString('hex');
         const now = Date.now();
         const expiresAt = now + (10 * 60 * 1000);
 
-        const baseUrl = process.env.BASE_URL || 'https://discord-bot-key-53oj.onrender.com';
+        const baseUrl = process.env.BASE_URL || 'https://key.nbtung.id.vn';
         const rawDestinationUrl = `${baseUrl}/verify.html?token=${token}`;
 
         const result = await generateShortLink(rawDestinationUrl, completedList);
 
         if (!result) {
             return interaction.editReply({
-                content: '🛑 Bạn đã vượt hết các cổng link khả dụng hôm nay rồi!'
+                content: '⚠️ **Hệ thống cổng vượt link hiện đang quá tải hoặc bảo trì API!**\nVui lòng thử lại sau ít phút hoặc liên hệ Quản trị viên.'
             });
         }
 
@@ -79,7 +77,7 @@ module.exports = {
                 { name: '📊 Tiến Độ Hôm Nay', value: `\`${user.daily_task_count}/${dailyLimit}\` lượt`, inline: true },
                 { name: '🌐 Cổng Vượt Link', value: `\`${provider}\``, inline: true },
                 { name: '⏳ Thời Hạn Link', value: '`10 Phút`', inline: true },
-                { name: '💡 Hướng Dẫn', value: 'Sau khi vượt link xong và nhận mã Key trên Web, dùng lệnh `/redeem` hoặc bấm nút **🎁 Nhập Mã Key** bên dưới để nhận thưởng.', inline: false }
+                { name: '💡 Hướng Dẫn', value: 'Sau khi vượt link xong và nhận mã Key trên Web, bấm nút **🎁 Nhập Mã Key** bên dưới để nhận thưởng.', inline: false }
             )
             .setFooter({ text: 'Nghiêm cấm dùng tool bypass để tránh bị khóa tài khoản' });
 
